@@ -56,6 +56,7 @@ void hardwareSetup(void) {
     digitalWrite(GRN_LED, HIGH);
     SerialUSB.begin();    
 }
+xTaskHandle xMonitorHandle;
 /**
  * The main function.
  */
@@ -76,9 +77,10 @@ void setup( void )
     
     /* Add tasks to the scheduler */
     xTaskCreate(vSerialTask, (const signed char*)"Serial", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
-    xTaskCreate(vMonitorTask, (const signed char*)"Monitor", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
+    xTaskCreate(vMonitorTask, (const signed char*)"Monitor", configMINIMAL_STACK_SIZE, NULL, 1, NULL); //&xMonitorHandle );
+
     xTaskCreate(vLedTask, (const signed char*)"Led", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
-    
+    //vTaskSuspend(xMonitorHandle); //dont start monitor task until serial can take the semiphores.
     /* Start the scheduler. */
     vTaskStartScheduler();
 }
@@ -103,7 +105,8 @@ static void vLedTask(void* pvParameters)
  * All data coming from the console or the datalogger
  * is delimited by <CR><LF>. Finding an end of line "gives" a semaphore.
  * 
- * eventually this should be moved down to the 
+ * eventually this should be moved down to the usart interupt handlers imho
+ *
  */
 static void vSerialTask(void* pvParameters)
 {
@@ -115,17 +118,16 @@ static void vSerialTask(void* pvParameters)
     usart_enable(USART1);
     deviceComm.len=0;
     deviceComm.gotline=false;
-    //vSemaphoreCreateBinary( deviceComm.xGotLineSemaphore );
+    vSemaphoreCreateBinary( deviceComm.xGotLineSemaphore );
     //if( consoleComm.xGotLineSemaphore == NULL )
     //{ // FREAK OUT!!!
     //}
     consoleComm.len=0;
     consoleComm.gotline=false;
-    //vSemaphoreCreateBinary( consoleComm.xGotLineSemaphore );
+    vSemaphoreCreateBinary( consoleComm.xGotLineSemaphore );
     //if( consoleComm.xGotLineSemaphore == NULL )
     //{ // FREAK THE HELL OUT!!!
     //}
-    
     
     //    usart_init(USART2);
     //    usart_set_baud_rate(USART2, USART_USE_PCLK, 9600);
@@ -136,7 +138,7 @@ static void vSerialTask(void* pvParameters)
         togglePin(YEL_LED);
         uint32_t rc=0;
         unsigned char ch;
-#if 0        
+
         if (!deviceComm.gotline) {
             //rc=usart_data_available(USART1);
             while (usart_data_available(USART1) 
@@ -146,14 +148,14 @@ static void vSerialTask(void* pvParameters)
                 if (ch=='\r') {  
                     deviceComm.gotline=true;
                     deviceComm.line[deviceComm.len]='\0';
-                    //xSemaphoreGive(deviceComm.xGotLineSemaphore);
+                    xSemaphoreGive(deviceComm.xGotLineSemaphore);
                     break;
                 } else if (ch!='\n') {
                     deviceComm.line[deviceComm.len++]=ch;
                 }
             }
         }
-#endif       
+     
         if (!consoleComm.gotline) {
             while(SerialUSB.isConnected() && SerialUSB.available()
                   && consoleComm.len<(MAX_COMMAND_LINE_LENGTH-1)) {
@@ -162,7 +164,7 @@ static void vSerialTask(void* pvParameters)
                 if (ch=='\r') {  
                     consoleComm.gotline=true;
                     consoleComm.line[consoleComm.len]='\0';
-                    //xSemaphoreGive(consoleComm.xGotLineSemaphore);
+                    xSemaphoreGive(consoleComm.xGotLineSemaphore);
                     break;
                 } else if ((ch==ASCII_DELETE) || (ch==ASCII_BACKSPACE)) {
                     if (consoleComm.len) consoleComm.len--;
@@ -179,6 +181,13 @@ static void vSerialTask(void* pvParameters)
 
 #define IN_NO_TIME_AT_ALL (( portTickType ) (5/portTICK_RATE_MS))
 #define UNTIL_ITS_ANNOYING (( portTickType ) (550/portTICK_RATE_MS))
+/*-------------------------------------------------------------------vMonitorTask()
+ *
+ * The monitor task waits for end of lines from the serial handler and dispatches it.
+ *
+ *
+ */
+
 static void vMonitorTask(void* pvParameters)
 {
     portTickType xLastWakeTime = xTaskGetTickCount();
@@ -187,31 +196,24 @@ static void vMonitorTask(void* pvParameters)
     int ret;
     /* Infinite loop */
     while(true)
-    {   //if(deviceComm.gotline){
-//        if (xSemaphoreTake(deviceComm.xGotLineSemaphore,IN_NO_TIME_AT_ALL)){
-//            handleDeviceInput(&deviceComm);
-//            xSemaphoreGive(deviceComm.xGotLineSemaphore);
-//        }
-        if (consoleComm.gotline){
-//        if (xSemaphoreTake(consoleComm.xGotLineSemaphore,IN_NO_TIME_AT_ALL)){
+    {   
+        if (xSemaphoreTake(deviceComm.xGotLineSemaphore,IN_NO_TIME_AT_ALL) &&deviceComm.gotline){
+            handleDeviceInput(&deviceComm);
+        }
+        if (xSemaphoreTake(consoleComm.xGotLineSemaphore,IN_NO_TIME_AT_ALL)&&(consoleComm.gotline)){
             ret=handleConsoleInput(&consoleComm);
-//            xSemaphoreGive(consoleComm.xGotLineSemaphore);
-          //  if(ret==COMMAND_FORWARDED){
-//                if (xSemaphoreTake(deviceComm.xGotLineSemaphore,UNTIL_ITS_ANNOYING))  {
-          //      while (!deviceComm.gotline) {
-                    
-           //     }
-           //         handleDeviceInput(&deviceComm);
-//                    xSemaphoreGive(deviceComm.xGotLineSemaphore);
-                //}
-            //}
+            if(ret==COMMAND_FORWARDED){ // if the device is not connected we should not wait 
+                if (xSemaphoreTake(deviceComm.xGotLineSemaphore,UNTIL_ITS_ANNOYING) && deviceComm.gotline)  {
+                    handleDeviceInput(&deviceComm);
+                } // else return nack as a timeout. 
+            }
          }
         //
         
         
         togglePin(GRN_LED);
         //SerialUSB.println("?");
-        toConsole("?");
+        //toConsole("?");
  //       vTaskDelay(100);
        vTaskDelayUntil(&xLastWakeTime, xWakePeriod);
     }
