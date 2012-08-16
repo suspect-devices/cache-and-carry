@@ -1,8 +1,34 @@
 /*-----------------------------------------------------------------datalogger.cpp
  *
  * This is a functional prototype of a datalogger. 
+ * the logger takes info from a monitored device (device) over serial and commands 
+ * from a program or a user through a usb console. These commands are formatted
+ * in a mannor described in Monitor.cpp and Monitor.h
  *
- *
+ *   Copyright (c) 2012, Donald Delmar Davis, Suspect Devices
+ *   All rights reserved.
+ *    
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions are met:
+ *   * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ *   * Neither the name of the Suspect Devices nor the
+ *   names of its contributors may be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *    
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *   DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ *   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *-----------------------------------------------------------------------------*/
 
@@ -12,12 +38,15 @@
 //#define uint32_t uint32 
 #endif
 
+#define DONT_WAIT (( portTickType ) (5/portTICK_RATE_MS))
+#define DEVICE_RESPONSE_TIMEOUT (( portTickType ) (550/portTICK_RATE_MS))
 #define ASCII_DELETE '\177'
 #define ASCII_BACKSPACE '\010'
 
 /*---------------------------------------------------------------------TUNABLES
  * 
  *----------------------------------------------------------------------------*/
+// should move this to common.h or something silly
 
 #define BLU_LED 19
 #define YEL_LED 18
@@ -31,6 +60,8 @@
 #include <io.h>
 #include <signal.h>
 #include <stdint.h>
+#include <SdFat.h>
+#include <HardwareSPI.h>
 #include <wirish/wirish.h>
 #include "MapleFreeRTOS.h"
 #include <libmaple/timer.h>
@@ -44,22 +75,79 @@ static void vMonitorTask(void* pvParameters);
 static void vLedTask(void* pvParameters);
 
 /* Global Variables */
+/*-------------------------------------------------------------GLOBAL VARIABLES
+ * 
+ *----------------------------------------------------------------------------*/
+
+HardwareSPI spi(1);
+//Sd2Card card(&spi);
+Sd2Card card;
+SdVolume volume;
+SdFile root;
+SdFile file;
+
+
+SdFile settingsFile;
+SdFile sysinfoFile;
+char logFileName[16];
+char settingsFileName[16]="BOM5K.SET";
+char sysinfoFileName[16]="AMAV2.DAT";
+bool connectedToNet=false;
+bool logOpened=false;
+time_t epoch=0;
+
+#define MAX_SSN_LENGTH 16
+#define MAX_HWV_LENGTH 8
+#define MAX_SWV_LENGTH 24
+#define MAX_TIME_LENGTH 24
+
+
+char deviceSSN[MAX_SSN_LENGTH]="00000000000";
+char deviceHWV[MAX_HWV_LENGTH]="0";
+char deviceSWV[MAX_SWV_LENGTH]="0.0-000000";
+time_t deviceLastContact=0L;
+bool deviceIsConnected=false;
 
 
 const int sensor_pin = 12;
+
+
+/*---------------------------------------------------------------hardwareSetup()
+ * 
+ *----------------------------------------------------------------------------*/
+
 void hardwareSetup(void) {
+    spi.begin(SPI_281_250KHZ, MSBFIRST, 0);
+
     pinMode(YEL_LED, OUTPUT);
     pinMode(GRN_LED, OUTPUT);
     pinMode(BLU_LED, OUTPUT);
     digitalWrite(YEL_LED, HIGH);
     digitalWrite(BLU_LED, LOW);
     digitalWrite(GRN_LED, HIGH);
-    SerialUSB.begin();    
+    SerialUSB.begin();  
+    
+    if (!card.init(&spi)) { 
+    //if (!card.init()) { 
+        toConsole("FTL: card.init failed");
+    }
+    delay(100);
+    
+    // initialize a FAT volume
+    if (!volume.init(&card)) {
+        toConsole("FTL: volume.init failed\r\n");
+    }
+    
+    // open the root directory
+    if (!root.openRoot(&volume)) 
+        toConsole("FTL: openRoot failed\r\n");
+    
+    
 }
-xTaskHandle xMonitorHandle;
-/**
- * The main function.
- */
+/*-----------------------------------------------------------------------Setup()
+ * 
+ *----------------------------------------------------------------------------*/
+
 void setup( void )
 {
     hardwareSetup();
@@ -80,7 +168,6 @@ void setup( void )
     xTaskCreate(vMonitorTask, (const signed char*)"Monitor", configMINIMAL_STACK_SIZE, NULL, 1, NULL); //&xMonitorHandle );
 
     xTaskCreate(vLedTask, (const signed char*)"Led", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
-    //vTaskSuspend(xMonitorHandle); //dont start monitor task until serial can take the semiphores.
     /* Start the scheduler. */
     vTaskStartScheduler();
 }
@@ -88,6 +175,9 @@ void setup( void )
 void loop( void )
 {
 }
+/*--------------------------------------------------------------------vLedTask()
+ * stubb
+ *----------------------------------------------------------------------------*/
 
 static void vLedTask(void* pvParameters)
 {
@@ -105,13 +195,16 @@ static void vLedTask(void* pvParameters)
  * All data coming from the console or the datalogger
  * is delimited by <CR><LF>. Finding an end of line "gives" a semaphore.
  * 
- * eventually this should be moved down to the usart interupt handlers imho
+ * Eventually this should be moved down to the usart interupt handlers imho
+ *
+ * At 9600 baud this needs to be run at least every (uart buffer size * ms) 
+ * to insure that the incoming data doesnt overrun the buffers.
  *
  */
 static void vSerialTask(void* pvParameters)
 {
     portTickType xLastWakeTime = xTaskGetTickCount();
-    const portTickType xWakePeriod = 50;
+    const portTickType xWakePeriod = 30;
     
     usart_init(USART1);
     usart_set_baud_rate(USART1, USART_USE_PCLK, 9600);
@@ -128,7 +221,8 @@ static void vSerialTask(void* pvParameters)
     //if( consoleComm.xGotLineSemaphore == NULL )
     //{ // FREAK THE HELL OUT!!!
     //}
-    
+
+    // serial task should probalby also handle the wifi module on usart2
     //    usart_init(USART2);
     //    usart_set_baud_rate(USART2, USART_USE_PCLK, 9600);
     //    usart_enable(USART2);
@@ -140,7 +234,6 @@ static void vSerialTask(void* pvParameters)
         unsigned char ch;
 
         if (!deviceComm.gotline) {
-            //rc=usart_data_available(USART1);
             while (usart_data_available(USART1) 
                    && deviceComm.len<(MAX_COMMAND_LINE_LENGTH-1)) {
                 ch=usart_getc(USART1);
@@ -179,11 +272,10 @@ static void vSerialTask(void* pvParameters)
     }
 }
 
-#define IN_NO_TIME_AT_ALL (( portTickType ) (5/portTICK_RATE_MS))
-#define UNTIL_ITS_ANNOYING (( portTickType ) (550/portTICK_RATE_MS))
 /*-------------------------------------------------------------------vMonitorTask()
  *
  * The monitor task waits for end of lines from the serial handler and dispatches it.
+ * 
  *
  *
  */
@@ -197,25 +289,23 @@ static void vMonitorTask(void* pvParameters)
     /* Infinite loop */
     while(true)
     {   
-        if (xSemaphoreTake(deviceComm.xGotLineSemaphore,IN_NO_TIME_AT_ALL) &&deviceComm.gotline){
+        if ((xSemaphoreTake(deviceComm.xGotLineSemaphore,DONT_WAIT) != pdTRUE) &&deviceComm.gotline){
             handleDeviceInput(&deviceComm);
         }
-        if (xSemaphoreTake(consoleComm.xGotLineSemaphore,IN_NO_TIME_AT_ALL)&&(consoleComm.gotline)){
+        if ((xSemaphoreTake(consoleComm.xGotLineSemaphore,DONT_WAIT) != pdTRUE) &&(consoleComm.gotline)){
             ret=handleConsoleInput(&consoleComm);
             if(ret==COMMAND_FORWARDED){ // if the device is not connected we should not wait 
-                if (xSemaphoreTake(deviceComm.xGotLineSemaphore,UNTIL_ITS_ANNOYING) && deviceComm.gotline)  {
+                if ((xSemaphoreTake(deviceComm.xGotLineSemaphore,DEVICE_RESPONSE_TIMEOUT) != pdTRUE)
+                    && deviceComm.gotline)  {
                     handleDeviceInput(&deviceComm);
-                } // else return nack as a timeout. 
+                } else {
+                    toConsole("NAK:TIMEOUT");
+                }
+
             }
          }
-        //
-        
-        
         togglePin(GRN_LED);
-        //SerialUSB.println("?");
-        //toConsole("?");
- //       vTaskDelay(100);
-       vTaskDelayUntil(&xLastWakeTime, xWakePeriod);
+        vTaskDelayUntil(&xLastWakeTime, xWakePeriod);
     }
 }
 

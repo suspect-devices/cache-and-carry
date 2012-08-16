@@ -63,7 +63,7 @@ $(foreach m,$(USER_MODULES_MODULES),$(eval $(call LIBMAPLE_MODULE_template,$(m))
 # We can't call our main file main.cpp, or libmaple's build system
 # will get confused and try to build it without our CXXFLAGS. So call
 # it something else. Annoying! Hopefully LeafLabs will fix it soon.
-cppSRCS_$(d) := Monitor.cpp datalogger.cpp
+cppSRCS_$(d) := Monitor.cpp Utilities.cpp datalogger.cpp
 #cppSRCS_$(d) += Monitor.cpp
 #cppSRCS_$(d) += wifiHack.cpp
 

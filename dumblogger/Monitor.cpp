@@ -1,17 +1,37 @@
-/*
- *  Monitor.c
- *  dumblogger
+/*--------------------------------------------------------------------Monitor.c 
+ *  
+ *  Description and docs... are in Monitor.h
  *
- *  Created by Donald D Davis on 8/8/12.
- *  Copyright 2012 Suspect Devices. All rights reserved.
+ *   Copyright (c) 2012, Donald Delmar Davis, Suspect Devices
+ *   All rights reserved.
+ *    
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions are met:
+ *   * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ *   * Neither the name of the Suspect Devices nor the
+ *   names of its contributors may be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *    
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *   DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ *   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- */
+ *-----------------------------------------------------------------------------*/
 
 #include "Monitor.h"
 
-//char keywords[((NKEYWORDS)*3)+1] = KEYWORDS LOGGERKEYWORDS;
 const char *keywords = KEYWORDS LOGGERKEYWORDS;
-//char *keywords = KEYWORDS LOGGERKEYWORDS;
 
 char actionBuffer[MAX_COMMAND_LINE_LENGTH]; //return buffer for console actions allocate this once use it often. 
 const char *theNak="NAK:";
@@ -19,7 +39,7 @@ const char *theNak="NAK:";
 cmdBuffer deviceComm;
 cmdBuffer consoleComm;
 
-//char keyBuff[4]; //fix this.
+char keyBuff[4]; //fix this.
 
 void registerAction(uint8_t ndx, actionptr action){
     if (ndx >=0 && ndx<NKEYWORDS) {
@@ -64,23 +84,18 @@ void toDevice(char *buff){
 }
 
 void toConsole(char *buff){ 
-    unsigned int nsent;
-    if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {
-        
+    
+    if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {        
         SerialUSB.write(buff);
         SerialUSB.write("\r\n");
-        
     }    
 }
 
 uint8_t NOPaction(uint8_t source) {  
     if (source==CONSOLE) {
-        //sprintf(actionBuffer, "DBG: Forwarding (%c%c%c) Not Implimented!", 
-        //        consoleComm.line[0], consoleComm.line[1], consoleComm.line[2]);
-        //        toConsole("Forwarding");
-        //toConsole((char *)consoleComm.line);// this crashes but below does not.
-        //sprintf(actionBuffer,"DBG: Forwarding678901234567890123456789!1234567890123456789012345678901234567890123456789!");
-        toConsole("DBG:Forwaring...");
+        siprintf(actionBuffer, "DBG: Forwarding (%c%c%c)!", 
+                 consoleComm.line[0], consoleComm.line[1], consoleComm.line[2]);
+               toConsole(actionBuffer);
         toDevice((char *)consoleComm.line);
 
         return COMMAND_FORWARDED;
@@ -99,6 +114,7 @@ uint8_t ACKaction (uint8_t source) {
         return COMMAND_OK;
     }
 }   
+
 uint8_t NAKaction (uint8_t source) {
     if (source==CONSOLE) {
         toConsole("NAK:");
@@ -106,6 +122,16 @@ uint8_t NAKaction (uint8_t source) {
     } else {
         toDevice("NAK:");
         return COMMAND_OK;
+    }
+}    
+
+uint8_t LSVaction (uint8_t source) {
+    if (source==CONSOLE) {
+        toConsole(BOM_VERSION);
+        return COMMAND_OK;
+    } else {
+        toDevice("NAK:");
+        return COMMAND_IGNORED;
     }
 }    
 
@@ -121,14 +147,13 @@ int getFreeMemory() // none of this works.
     return freeMemory;
 }
 
+
 uint8_t MEMaction (uint8_t source) {
     if (consoleComm.verb=='?') {
         int memory;
         memory=getFreeMemory();
-        SerialUSB.print("MEM:");
-        SerialUSB.println(memory);
-        //sprintf(actionBuffer, "MEM:%d",memory); //crashes shortly after printing to console. 
-        //toConsole(actionBuffer);
+        siprintf(actionBuffer,"MEM:%d",memory); 
+        toConsole(actionBuffer);
         return COMMAND_OK;
     } else {
         toConsole("NAK:");
@@ -222,9 +247,11 @@ actionptr actions[NKEYWORDS] = {
     &NOPaction,    //DTM [   ] 
     &NOPaction,    //DID [   ] 
     &NOPaction,    //LVB [   ] 
-    &NOPaction,    //LSV [   ] 
+    &LSVaction,    //LSV [   ] logger software version. 
 };
     
+struct tm theTime;
+
 void parseLine(cmdBuffer *buff) {
     // should check for more than 4 characters
     buff->args=buff->line+4; 

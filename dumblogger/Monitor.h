@@ -1,13 +1,12 @@
 
 /*------------------------------------------------------------------------Monitor.h
  *
- * 
+ * The pourpose of the monitor is to interpret and dispatch data The idea is to 
+ * try to set up a relatively flexible interpreter for data coming in from the 
+ * serial port and also commands coming from the usb port. Using a jump table which
+ * is populated by other modules who register the action to be taken. 
  *
- #define LOGGERKEYWORDS \
- "DIR"         "DEL" "TX2" "TYP" "NSC" "NJN" "NPW" "NST" "TPT" "FMT" "PKY"\
- "PFD" "PTO" "PIP" "PON" "POF" "SSV" "SGT" "TFN" "TFD" "LTM" "DVP" "DVT"\
- "DTM" "DID" "LVB" "LSV" 
- 
+ * ------------------------------------------- current vocabulary.
  * Deal with multi line data.
  * SOD[  :]Start of multiline data
  * EOD[  :]End of multiline data
@@ -50,6 +49,31 @@
  * 
  * all remaining items are sent to the monitored device
  * 
+ *   Copyright (c) 2012, Donald Delmar Davis, Suspect Devices
+ *   All rights reserved.
+ *    
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions are met:
+ *   * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ *   * Neither the name of the Suspect Devices nor the
+ *   names of its contributors may be used to endorse or promote products
+ *   derived from this software without specific prior written permission.
+ *    
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *   DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ *   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
  *-----------------------------------------------------------------------------*/
 
 #ifndef __MONITOR_H__
@@ -66,7 +90,7 @@
 #include <sys/types.h>
 
 #define BOM_VERSION "BOM5K_"__DATE__
-//#define BOM_VERSION "BOM5K_"__DATE__ " "__TIME__
+#define BOM_VERSION "BOM5K_GEN_"__DATE__ " "__TIME__
 
 #define KEYWORDS \
 "SYN" "ACK" "NAK" "SWV" "HWV" "MEM" "SSN" "HLP" "FTL" "ALT" "WRN" "INF" "DBG"\
@@ -112,17 +136,16 @@ _DTM_,_DID_,_LVB_,_LSV_
 #include <stdio.h>
 #include <io.h>
 #include <ctype.h>
+#include <time.h>
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <stdint.h>
 #include <wirish/wirish.h>
 
-//#include "DataStream.h"
-/* Scheduler includes. */
 #include "MapleFreeRTOS.h"
-//#include <libmaple/timer.h>
-//#include <libmaple/usart.h>
+#include <libmaple/timer.h>
+#include <libmaple/usart.h>
 
 #ifndef uint8_t 
 #ifndef uint8
@@ -135,14 +158,13 @@ _DTM_,_DID_,_LVB_,_LSV_
 #endif
 
 extern const char *keywords;
-//extern  char *keywords;
 
 typedef uint8_t (actionfunc)(uint8_t source);
 typedef uint8_t (*actionptr)(uint8_t source);
 
 extern actionptr actions[];
 extern char actionBuffer[MAX_COMMAND_LINE_LENGTH];
-extern const char *theNak;
+//extern const char *theNak;
 
 typedef struct __cmdbuff {
     unsigned char line[MAX_COMMAND_LINE_LENGTH];
