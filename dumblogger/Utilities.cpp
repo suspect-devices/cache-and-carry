@@ -25,7 +25,16 @@
  *-----------------------------------------------------------------------------*/
 
 #include "Utilities.h"
-//find next unopened file.
+
+/*-----------------------------------------------------------------------------
+ * file handling
+ *----------------------------------------------------------------------------*/
+
+
+/*----------------------------------------------------------------openNextFile() 
+ * find next unopened file number.
+ *----------------------------------------------------------------------------*/
+
 int openNextFile() {
     dir_t p;//=&root;
     int current;
@@ -51,7 +60,7 @@ int openNextFile() {
         if (p.fileSize==0) {
             p.name[0] = DIR_NAME_DELETED;
             continue;
-            //SdVolume::CacheFlush();
+           
         }
 #endif        
         if (!strncmp("LOG", p.name, 3) && !strncmp("TXT", p.name+8, 3)) {
@@ -62,12 +71,13 @@ int openNextFile() {
             current=atoi(numpart);
             if ( current > max ) max=current;
         }
-        /*console.printf("DBG: %c%c%c%c%c%c%c%c.%c%c%c (%d)\r\n", 
+        /*toConsole("DBG: %c%c%c%c%c%c%c%c.%c%c%c (%d)\r\n", 
          p.name[0],p.name[1],p.name[2],p.name[3],
          p.name[4],p.name[5],p.name[6],p.name[7],
          p.name[8],p.name[9],p.name[10],max);
          */      
     }
+     //SdVolume::CacheFlush(); to finish deleting files.
     return max;
     
 }

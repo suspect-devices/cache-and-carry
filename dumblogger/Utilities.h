@@ -34,12 +34,17 @@
 #include <SdFat.h>
 #include <HardwareSPI.h>
 #include <string.h>
+// move this to a project settings file.
 
 #define BLU_LED 19
 #define YEL_LED 18
 #define GRN_LED 14
 #define LED_ON  LOW
 #define LED_OFF HIGH
+
+/*-----------------------------------------------------------------------------
+ * file handling
+ *----------------------------------------------------------------------------*/
 
 extern Sd2Card card;
 extern SdVolume volume;
