@@ -28,7 +28,7 @@
 
 #include <stdarg.h>
 
-static void printchar(char **str, int c)
+static void doPrintchar(char **str, int c)
 {
 	extern int putchar(int c);
 	
@@ -42,7 +42,7 @@ static void printchar(char **str, int c)
 #define PAD_RIGHT 1
 #define PAD_ZERO 2
 
-static int prints(char **out, const char *string, int width, int pad)
+static int doPrints(char **out, const char *string, int width, int pad)
 {
 	register int pc = 0, padchar = ' ';
 
@@ -56,16 +56,16 @@ static int prints(char **out, const char *string, int width, int pad)
 	}
 	if (!(pad & PAD_RIGHT)) {
 		for ( ; width > 0; --width) {
-			printchar (out, padchar);
+			doPrintchar (out, padchar);
 			++pc;
 		}
 	}
 	for ( ; *string ; ++string) {
-		printchar (out, *string);
+		doPrintchar (out, *string);
 		++pc;
 	}
 	for ( ; width > 0; --width) {
-		printchar (out, padchar);
+		doPrintchar (out, padchar);
 		++pc;
 	}
 
@@ -73,19 +73,19 @@ static int prints(char **out, const char *string, int width, int pad)
 }
 
 /* the following should be enough for 32 bit int */
-#define PRINT_BUF_LEN 12
+#define doPrint_BUF_LEN 12
 
-static int printi(char **out, int i, int b, int sg, int width, int pad, int letbase)
+static int doPrinti(char **out, int i, int b, int sg, int width, int pad, int letbase)
 {
-	char print_buf[PRINT_BUF_LEN];
+	char doPrint_buf[doPrint_BUF_LEN];
 	register char *s;
 	register int t, neg = 0, pc = 0;
 	register unsigned int u = i;
 
 	if (i == 0) {
-		print_buf[0] = '0';
-		print_buf[1] = '\0';
-		return prints (out, print_buf, width, pad);
+		doPrint_buf[0] = '0';
+		doPrint_buf[1] = '\0';
+		return doPrints (out, doPrint_buf, width, pad);
 	}
 
 	if (sg && b == 10 && i < 0) {
@@ -93,7 +93,7 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 		u = -i;
 	}
 
-	s = print_buf + PRINT_BUF_LEN-1;
+	s = doPrint_buf + doPrint_BUF_LEN-1;
 	*s = '\0';
 
 	while (u) {
@@ -106,7 +106,7 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 
 	if (neg) {
 		if( width && (pad & PAD_ZERO) ) {
-			printchar (out, '-');
+			doPrintchar (out, '-');
 			++pc;
 			--width;
 		}
@@ -115,10 +115,10 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 		}
 	}
 
-	return pc + prints (out, s, width, pad);
+	return pc + doPrints (out, s, width, pad);
 }
 
-static int print( char **out, const char *format, va_list args )
+static int doPrint( char **out, const char *format, va_list args )
 {
 	register int width, pad;
 	register int pc = 0;
@@ -144,36 +144,36 @@ static int print( char **out, const char *format, va_list args )
 			}
 			if( *format == 's' ) {
 				register char *s = (char *)va_arg( args, int );
-				pc += prints (out, s?s:"(null)", width, pad);
+				pc += doPrints (out, s?s:"(null)", width, pad);
 				continue;
 			}
 			if( *format == 'd' ) {
-				pc += printi (out, va_arg( args, int ), 10, 1, width, pad, 'a');
+				pc += doPrinti (out, va_arg( args, int ), 10, 1, width, pad, 'a');
 				continue;
 			}
 			if( *format == 'x' ) {
-				pc += printi (out, va_arg( args, int ), 16, 0, width, pad, 'a');
+				pc += doPrinti (out, va_arg( args, int ), 16, 0, width, pad, 'a');
 				continue;
 			}
 			if( *format == 'X' ) {
-				pc += printi (out, va_arg( args, int ), 16, 0, width, pad, 'A');
+				pc += doPrinti (out, va_arg( args, int ), 16, 0, width, pad, 'A');
 				continue;
 			}
 			if( *format == 'u' ) {
-				pc += printi (out, va_arg( args, int ), 10, 0, width, pad, 'a');
+				pc += doPrinti (out, va_arg( args, int ), 10, 0, width, pad, 'a');
 				continue;
 			}
 			if( *format == 'c' ) {
 				/* char are converted to int then pushed on the stack */
 				scr[0] = (char)va_arg( args, int );
 				scr[1] = '\0';
-				pc += prints (out, scr, width, pad);
+				pc += doPrints (out, scr, width, pad);
 				continue;
 			}
 		}
 		else {
 		out:
-			printchar (out, *format);
+			doPrintchar (out, *format);
 			++pc;
 		}
 	}
@@ -182,35 +182,35 @@ static int print( char **out, const char *format, va_list args )
 	return pc;
 }
 
-int printf(const char *format, ...)
+int doPrintf(const char *format, ...)
 {
         va_list args;
         
         va_start( args, format );
-        return print( 0, format, args );
+        return doPrint( 0, format, args );
 }
 
-int sprintf(char *out, const char *format, ...)
+int sdoPrintf(char *out, const char *format, ...)
 {
         va_list args;
         
         va_start( args, format );
-        return print( &out, format, args );
+        return doPrint( &out, format, args );
 }
 
 
-int snprintf( char *buf, unsigned int count, const char *format, ... )
+int sndoPrintf( char *buf, unsigned int count, const char *format, ... )
 {
         va_list args;
         
         ( void ) count;
         
         va_start( args, format );
-        return print( &buf, format, args );
+        return doPrint( &buf, format, args );
 }
 
 
-#ifdef TEST_PRINTF
+#ifdef TEST_doPrintF
 int main(void)
 {
 	char *ptr = "Hello world!";
@@ -221,41 +221,41 @@ int main(void)
 	char buf[80];
 
 	mi = (1 << (bs-1)) + 1;
-	printf("%s\n", ptr);
-	printf("printf test\n");
-	printf("%s is null pointer\n", np);
-	printf("%d = 5\n", i);
-	printf("%d = - max int\n", mi);
-	printf("char %c = 'a'\n", 'a');
-	printf("hex %x = ff\n", 0xff);
-	printf("hex %02x = 00\n", 0);
-	printf("signed %d = unsigned %u = hex %x\n", -3, -3, -3);
-	printf("%d %s(s)%", 0, "message");
-	printf("\n");
-	printf("%d %s(s) with %%\n", 0, "message");
-	sprintf(buf, "justif: \"%-10s\"\n", "left"); printf("%s", buf);
-	sprintf(buf, "justif: \"%10s\"\n", "right"); printf("%s", buf);
-	sprintf(buf, " 3: %04d zero padded\n", 3); printf("%s", buf);
-	sprintf(buf, " 3: %-4d left justif.\n", 3); printf("%s", buf);
-	sprintf(buf, " 3: %4d right justif.\n", 3); printf("%s", buf);
-	sprintf(buf, "-3: %04d zero padded\n", -3); printf("%s", buf);
-	sprintf(buf, "-3: %-4d left justif.\n", -3); printf("%s", buf);
-	sprintf(buf, "-3: %4d right justif.\n", -3); printf("%s", buf);
+	doPrintf("%s\n", ptr);
+	doPrintf("doPrintf test\n");
+	doPrintf("%s is null pointer\n", np);
+	doPrintf("%d = 5\n", i);
+	doPrintf("%d = - max int\n", mi);
+	doPrintf("char %c = 'a'\n", 'a');
+	doPrintf("hex %x = ff\n", 0xff);
+	doPrintf("hex %02x = 00\n", 0);
+	doPrintf("signed %d = unsigned %u = hex %x\n", -3, -3, -3);
+	doPrintf("%d %s(s)%", 0, "message");
+	doPrintf("\n");
+	doPrintf("%d %s(s) with %%\n", 0, "message");
+	sdoPrintf(buf, "justif: \"%-10s\"\n", "left"); doPrintf("%s", buf);
+	sdoPrintf(buf, "justif: \"%10s\"\n", "right"); doPrintf("%s", buf);
+	sdoPrintf(buf, " 3: %04d zero padded\n", 3); doPrintf("%s", buf);
+	sdoPrintf(buf, " 3: %-4d left justif.\n", 3); doPrintf("%s", buf);
+	sdoPrintf(buf, " 3: %4d right justif.\n", 3); doPrintf("%s", buf);
+	sdoPrintf(buf, "-3: %04d zero padded\n", -3); doPrintf("%s", buf);
+	sdoPrintf(buf, "-3: %-4d left justif.\n", -3); doPrintf("%s", buf);
+	sdoPrintf(buf, "-3: %4d right justif.\n", -3); doPrintf("%s", buf);
 
 	return 0;
 }
 
 /*
  * if you compile this file with
- *   gcc -Wall $(YOUR_C_OPTIONS) -DTEST_PRINTF -c printf.c
+ *   gcc -Wall $(YOUR_C_OPTIONS) -DTEST_doPrintF -c doPrintf.c
  * you will get a normal warning:
- *   printf.c:214: warning: spurious trailing `%' in format
+ *   doPrintf.c:214: warning: spurious trailing `%' in format
  * this line is testing an invalid % at the end of the format string.
  *
  * this should display (on 32bit int machine) :
  *
  * Hello world!
- * printf test
+ * doPrintf test
  * (null) is null pointer
  * 5 = 5
  * -2147483647 = - max int

@@ -82,18 +82,23 @@ void toDevice(char *buff){
     usart_tx(USART1, (uint8_t *)"\r\n", 2);
     ;
 }
+extern "C" {int sdoPrintf(char *out, const char *format, ...);}
 
-void toConsole(char *buff){ 
-    
+void toConsole(const char *format, ...){ 
+    va_list args;    
+    va_start( args, format );
+    //int sdoPrintf(char *out, const char *format, ...)
+    //siprintf(actionBuffer, format, args );
+    sdoPrintf(actionBuffer, format, args );
     if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {        
-        SerialUSB.write(buff);
+        SerialUSB.write(actionBuffer);
         SerialUSB.write("\r\n");
     }    
 }
 
 uint8_t NOPaction(uint8_t source) {  
     if (source==CONSOLE) {
-        siprintf(actionBuffer, "DBG: Forwarding (%c%c%c)!", 
+        toConsole("DBG: Forwarding (%c%c%c)!", 
                  consoleComm.line[0], consoleComm.line[1], consoleComm.line[2]);
                toConsole(actionBuffer);
         toDevice((char *)consoleComm.line);
@@ -106,8 +111,7 @@ uint8_t NOPaction(uint8_t source) {
 }
 uint8_t ACKaction (uint8_t source) {
     if (source==CONSOLE) {
-        sprintf(actionBuffer, "ACK:");
-        toConsole(actionBuffer);
+         toConsole("ACK:");
         return COMMAND_OK;
     } else {
         toDevice("ACK:");
@@ -127,7 +131,7 @@ uint8_t NAKaction (uint8_t source) {
 
 uint8_t LSVaction (uint8_t source) {
     if (source==CONSOLE) {
-        toConsole(BOM_VERSION);
+        toConsole("LSV:%s",BOM_VERSION);
         return COMMAND_OK;
     } else {
         toDevice("NAK:");
@@ -152,8 +156,7 @@ uint8_t MEMaction (uint8_t source) {
     if (consoleComm.verb=='?') {
         int memory;
         memory=getFreeMemory();
-        siprintf(actionBuffer,"MEM:%d",memory); 
-        toConsole(actionBuffer);
+        toConsole(actionBuffer,"MEM:%d",memory);;
         return COMMAND_OK;
     } else {
         toConsole("NAK:");

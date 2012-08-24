@@ -21,7 +21,7 @@
 #define configCPU_CLOCK_HZ			( ( unsigned portLONG ) 8000000 ) /* Clock setup from main.c in the demo application. */
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
 #define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 4 )
-#define configMINIMAL_STACK_SIZE	( ( unsigned portSHORT ) 200 )
+#define configMINIMAL_STACK_SIZE	( ( unsigned portSHORT ) 400 )
 #define configTOTAL_HEAP_SIZE		( ( size_t ) ( 6000 ) )
 #define configMAX_TASK_NAME_LEN		( 8 )
 #define configUSE_TRACE_FACILITY	0

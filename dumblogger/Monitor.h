@@ -134,6 +134,7 @@ _DTM_,_DID_,_LVB_,_LSV_
  * 
  *----------------------------------------------------------------------------*/
 #include <stdio.h>
+#include <stdarg.h>
 #include <io.h>
 #include <ctype.h>
 #include <time.h>
@@ -197,7 +198,7 @@ int lookupIndex(unsigned char *key);
 char *lookupKey(int ndx, unsigned char *keyBuffer); 
 int handleDeviceInput(cmdBuffer *);
 int handleConsoleInput(cmdBuffer *);
-void toConsole(char *);
+void toConsole(const char *format, ...);
 void toDevice(char *);
 void registerAction(uint8_t, actionptr);
 char *actBuff(const char *format, ...);
