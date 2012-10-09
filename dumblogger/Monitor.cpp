@@ -87,11 +87,13 @@ extern "C" {int sdoPrintf(char *out, const char *format, ...);}
 void toConsole(const char *format, ...){ 
     va_list args;    
     va_start( args, format );
-    sprintf(actionBuffer, format, args );
+    vsprintf(actionBuffer, format, args );
     if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {        
         SerialUSB.write(actionBuffer);
         SerialUSB.write("\r\n");
-    }    
+    }
+    va_end(args);
+
 }
 
 uint8_t NOPaction(uint8_t source) {  
@@ -255,7 +257,7 @@ struct tm theTime;
 
 void parseLine(cmdBuffer *buff) {
     // should check for more than 4 characters
-    buff->args=buff->line+4; 
+    buff->args=(buff->line)+4; 
     buff->verb=buff->line[3];
     //buff->line[3]='\0';
     buff->kwIndex=lookupIndex(buff->line);
@@ -275,7 +277,7 @@ int handleDeviceInput(cmdBuffer * cmd) {
 int handleConsoleInput(cmdBuffer * cmd) {
     int retval;
     parseLine(cmd);
-    toConsole("?%s?",cmd->line);
+ 
     if ((cmd->kwIndex) >=0 ) {
         retval=actions[cmd->kwIndex](CONSOLE);
     }

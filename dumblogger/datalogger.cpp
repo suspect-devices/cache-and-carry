@@ -157,31 +157,30 @@ void setup( void )
     
 }
 
-void loop( void )
-{
-}
-/*--------------------------------------------------------------------vLedTask()
+/*---------------------------------------------------------------------LedTask()
  * stubb
  *----------------------------------------------------------------------------*/
 
 static void ledTask()
 {
     togglePin(BLU_LED);
-    
 }
 
 static void serialTasks() {
     char ch;
+
     while ((consoleComm.gotline==false) && (SerialUSB.available())) {
-        if ((((ch=SerialUSB.read())!='\r')||(ch!='\n'))
+        if ((((ch=SerialUSB.read())!='\r') && (ch!='\n'))
             &&(consoleComm.len<MAX_COMMAND_LINE_LENGTH)
             ) {
-            consoleComm.line[consoleComm.len++]=ch;
+                consoleComm.line[consoleComm.len++] = ch;
         } else {
             if (consoleComm.len) {
-                consoleComm.gotline=true;
+                consoleComm.gotline = true;
             }
+            consoleComm.line[consoleComm.len]='\0';
         }
+        SerialUSB.write(ch);
     }
 }
 
@@ -196,12 +195,11 @@ int main(void) {
     // should never get past setup.
     while (true) {
         serialTasks(); //move to 
-        if (consoleComm.gotline) {
+        if (consoleComm.gotline) {            
             handleConsoleInput(&consoleComm);
         }
             
-        loop();
-    }
+   }
     
     return 0;
     
