@@ -1,4 +1,3 @@
-
 /*------------------------------------------------------------------------Monitor.h
  *
  * The pourpose of the monitor is to interpret and dispatch data The idea is to 

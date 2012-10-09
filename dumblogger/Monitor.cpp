@@ -87,9 +87,7 @@ extern "C" {int sdoPrintf(char *out, const char *format, ...);}
 void toConsole(const char *format, ...){ 
     va_list args;    
     va_start( args, format );
-    //int sdoPrintf(char *out, const char *format, ...)
-    //siprintf(actionBuffer, format, args );
-    sdoPrintf(actionBuffer, format, args );
+    sprintf(actionBuffer, format, args );
     if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {        
         SerialUSB.write(actionBuffer);
         SerialUSB.write("\r\n");
@@ -277,6 +275,7 @@ int handleDeviceInput(cmdBuffer * cmd) {
 int handleConsoleInput(cmdBuffer * cmd) {
     int retval;
     parseLine(cmd);
+    toConsole("?%s?",cmd->line);
     if ((cmd->kwIndex) >=0 ) {
         retval=actions[cmd->kwIndex](CONSOLE);
     }

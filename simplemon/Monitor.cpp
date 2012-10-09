@@ -89,9 +89,7 @@ void toDevice(char *buff){
 void toConsole(const char *format, ...){ 
     va_list args;    
     va_start( args, format );
-    //int sdoPrintf(char *out, const char *format, ...)
-    //siprintf(actionBuffer, format, args );
-    vsnprintf(actionBuffer, format, args );
+     vsnprintf(actionBuffer, format, args );
     if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {        
         SerialUSB.write(actionBuffer);
         SerialUSB.write("\r\n");

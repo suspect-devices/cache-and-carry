@@ -38,8 +38,6 @@
 //#define uint32_t uint32 
 #endif
 
-#define DONT_WAIT (( portTickType ) (5/portTICK_RATE_MS))
-#define DEVICE_RESPONSE_TIMEOUT (( portTickType ) (550/portTICK_RATE_MS))
 #define ASCII_DELETE '\177'
 #define ASCII_BACKSPACE '\010'
 
@@ -63,16 +61,11 @@
 #include <SdFat.h>
 #include <HardwareSPI.h>
 #include <wirish/wirish.h>
-#include "MapleFreeRTOS.h"
 #include <libmaple/timer.h>
 #include <libmaple/usart.h>
 //extern "C" {
 #include "Monitor.h"
 //}
-/* Function Prototypes */
-static void vSerialTask(void* pvParameters);
-static void vMonitorTask(void* pvParameters);
-static void vLedTask(void* pvParameters);
 
 /* Global Variables */
 /*-------------------------------------------------------------GLOBAL VARIABLES
@@ -162,14 +155,6 @@ void setup( void )
     // Setup the sensor pin as an analog input
     pinMode(sensor_pin,INPUT_ANALOG);
     
-    
-    /* Add tasks to the scheduler */
-    xTaskCreate(vSerialTask, (const signed char*)"Serial", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
-    xTaskCreate(vMonitorTask, (const signed char*)"Monitor", configMINIMAL_STACK_SIZE, NULL, 1, NULL); //&xMonitorHandle );
-
-    xTaskCreate(vLedTask, (const signed char*)"Led", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
-    /* Start the scheduler. */
-    vTaskStartScheduler();
 }
 
 void loop( void )
@@ -179,133 +164,24 @@ void loop( void )
  * stubb
  *----------------------------------------------------------------------------*/
 
-static void vLedTask(void* pvParameters)
+static void ledTask()
 {
-    while (true){
     togglePin(BLU_LED);
-    vTaskDelay(200);
-    }
-}
-// move these to monitor.....
-
-/*-----------------------------------------------------------------vSerialTask()
- *
- * Handle (usb/serial) from console and monitored device. 
- * The idea here is to handle the incoming characters as quickly as possible. 
- * All data coming from the console or the datalogger
- * is delimited by <CR><LF>. Finding an end of line "gives" a semaphore.
- * 
- * Eventually this should be moved down to the usart interupt handlers imho
- *
- * At 9600 baud this needs to be run at least every (uart buffer size * ms) 
- * to insure that the incoming data doesnt overrun the buffers.
- *
- */
-static void vSerialTask(void* pvParameters)
-{
-    portTickType xLastWakeTime = xTaskGetTickCount();
-    const portTickType xWakePeriod = 30;
     
-    usart_init(USART1);
-    usart_set_baud_rate(USART1, USART_USE_PCLK, 9600);
-    usart_enable(USART1);
-    deviceComm.len=0;
-    deviceComm.gotline=false;
-    vSemaphoreCreateBinary( deviceComm.xGotLineSemaphore );
-    //if( consoleComm.xGotLineSemaphore == NULL )
-    //{ // FREAK OUT!!!
-    //}
-    consoleComm.len=0;
-    consoleComm.gotline=false;
-    vSemaphoreCreateBinary( consoleComm.xGotLineSemaphore );
-    //if( consoleComm.xGotLineSemaphore == NULL )
-    //{ // FREAK THE HELL OUT!!!
-    //}
-
-    // serial task should probalby also handle the wifi module on usart2
-    //    usart_init(USART2);
-    //    usart_set_baud_rate(USART2, USART_USE_PCLK, 9600);
-    //    usart_enable(USART2);
-    
-    while (true)
-    {   
-        togglePin(YEL_LED);
-        uint32_t rc=0;
-        unsigned char ch;
-
-        if (!deviceComm.gotline) {
-            while (usart_data_available(USART1) 
-                   && deviceComm.len<(MAX_COMMAND_LINE_LENGTH-1)) {
-                ch=usart_getc(USART1);
-                
-                if (ch=='\r') {  
-                    deviceComm.gotline=true;
-                    deviceComm.line[deviceComm.len]='\0';
-                    xSemaphoreGive(deviceComm.xGotLineSemaphore);
-                    break;
-                } else if (ch!='\n') {
-                    deviceComm.line[deviceComm.len++]=ch;
-                }
-            }
-        }
-     
-        if (!consoleComm.gotline) {
-            while(SerialUSB.isConnected() && SerialUSB.available()
-                  && consoleComm.len<(MAX_COMMAND_LINE_LENGTH-1)) {
-                ch=SerialUSB.read();
-                SerialUSB.write(ch);
-                if (ch=='\r') {  
-                    consoleComm.gotline=true;
-                    consoleComm.line[consoleComm.len]='\0';
-                    xSemaphoreGive(consoleComm.xGotLineSemaphore);
-                    break;
-                } else if ((ch==ASCII_DELETE) || (ch==ASCII_BACKSPACE)) {
-                    if (consoleComm.len) consoleComm.len--;
-                } else if (ch!='\n') {
-                    consoleComm.line[consoleComm.len++]=ch;                    
-                }
-            }
-        }
-
-        vTaskDelayUntil(&xLastWakeTime, xWakePeriod);
-        
-    }
 }
 
-/*-------------------------------------------------------------------vMonitorTask()
- *
- * The monitor task waits for end of lines from the serial handler and dispatches it.
- * 
- *
- *
- */
-
-static void vMonitorTask(void* pvParameters)
-{
-    portTickType xLastWakeTime = xTaskGetTickCount();
-    
-    const portTickType xWakePeriod = 100;
-    int ret;
-    /* Infinite loop */
-    while(true)
-    {   
-        if ((xSemaphoreTake(deviceComm.xGotLineSemaphore,DONT_WAIT) != pdTRUE) &&deviceComm.gotline){
-            handleDeviceInput(&deviceComm);
-        }
-        if ((xSemaphoreTake(consoleComm.xGotLineSemaphore,DONT_WAIT) != pdTRUE) &&(consoleComm.gotline)){
-            ret=handleConsoleInput(&consoleComm);
-            if(ret==COMMAND_FORWARDED){ // if the device is not connected we should not wait 
-                if ((xSemaphoreTake(deviceComm.xGotLineSemaphore,DEVICE_RESPONSE_TIMEOUT) != pdTRUE)
-                    && deviceComm.gotline)  {
-                    handleDeviceInput(&deviceComm);
-                } else {
-                    toConsole("NAK:TIMEOUT");
-                }
-
+static void serialTasks() {
+    char ch;
+    while ((consoleComm.gotline==false) && (SerialUSB.available())) {
+        if ((((ch=SerialUSB.read())!='\r')||(ch!='\n'))
+            &&(consoleComm.len<MAX_COMMAND_LINE_LENGTH)
+            ) {
+            consoleComm.line[consoleComm.len++]=ch;
+        } else {
+            if (consoleComm.len) {
+                consoleComm.gotline=true;
             }
-         }
-        togglePin(GRN_LED);
-        vTaskDelayUntil(&xLastWakeTime, xWakePeriod);
+        }
     }
 }
 
@@ -319,6 +195,11 @@ int main(void) {
     setup();
     // should never get past setup.
     while (true) {
+        serialTasks(); //move to 
+        if (consoleComm.gotline) {
+            handleConsoleInput(&consoleComm);
+        }
+            
         loop();
     }
     
