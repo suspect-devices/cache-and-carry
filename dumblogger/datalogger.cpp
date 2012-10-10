@@ -101,7 +101,6 @@ char deviceSWV[MAX_SWV_LENGTH]="0.0-000000";
 time_t deviceLastContact=0L;
 bool deviceIsConnected=false;
 
-
 const int sensor_pin = 12;
 
 
@@ -180,7 +179,7 @@ static void serialTasks() {
             }
             consoleComm.line[consoleComm.len]='\0';
         }
-        SerialUSB.write(ch);
+        //SerialUSB.write(ch);
     }
 }
 

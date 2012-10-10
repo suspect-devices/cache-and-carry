@@ -99,8 +99,7 @@ void toConsole(const char *format, ...){
 uint8_t NOPaction(uint8_t source) {  
     if (source==CONSOLE) {
         toConsole("DBG: Forwarding (%c%c%c)!", 
-                 consoleComm.line[0], consoleComm.line[1], consoleComm.line[2]);
-               toConsole(actionBuffer);
+                  consoleComm.line[0], consoleComm.line[1], consoleComm.line[2]);
         toDevice((char *)consoleComm.line);
 
         return COMMAND_FORWARDED;
