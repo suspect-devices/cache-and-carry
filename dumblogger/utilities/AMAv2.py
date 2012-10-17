@@ -283,7 +283,7 @@ class AMAv2:
                     ser.close()
                 attempts=attempts-1
         self.attached = (self.ser is not None)
-        print ":", self.attached, self.logger_swv_string,self.ser
+        #print ":", self.attached, self.logger_swv_string,self.ser
     
     def dispatch(self,buffer):
         if buffer is None:

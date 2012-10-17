@@ -6,12 +6,11 @@ import datetime
 import time
 import os
 from wx.lib.embeddedimage import PyEmbeddedImage
-
+import sys
 from AMAv2 import AMAv2
 import icons
-#self.button1 = wx.BitmapButton(self.panel1, id=-1, bitmap=image1,
 
-libmaple_directory=os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../libmaple/'
+libmaple_directory=os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../../libmaple/'
 program_code_directory='../programs/dumblogger'
 my_dir=os.path.dirname(os.path.realpath(__file__))
 
@@ -58,7 +57,7 @@ class ConsoleFrame(wx.Frame):
         self.SetClientSize(wx.Size(838, 504))
 
         self.CMD = wx.TextCtrl(id=wxID_CONSOLE_FRAMECMD, name=u'CMD', parent=self,
-              pos=wx.Point(0, 62), size=wx.Size(100, 22), style=wx.TE_PROCESS_ENTER|wx.PROCESS_ENTER, value=u'>')
+              pos=wx.Point(0, 62), size=wx.Size(100, 22), style=wx.TE_PROCESS_ENTER|wx.PROCESS_ENTER, value=u'')
         self.CMD.Bind(wx.EVT_TEXT_ENTER, self.OnCMDText, id=wxID_CONSOLE_FRAMECMD)
         self.CMD.Bind(wx.EVT_KILL_FOCUS, self.OnCMDKillFocus)
 
@@ -69,15 +68,17 @@ class ConsoleFrame(wx.Frame):
         #self.OUTPUT.SetAutoLayout(True)
         self.OUTPUT.Enable(False)
 
-        self.REBUILD = wx.Button(id=wxID_CONSOLE_FRAMEREBUILD, label=u'REBUILD',
-              name=u'REBUILD', parent=self, pos=wx.Point(0, 20),
-              size=wx.Size(84, 20), style=0)
+        self.REBUILD = wx.BitmapButton(id=wxID_CONSOLE_FRAMEREBUILD, #label=u'RESET',
+              bitmap=icons.updateIcon.Image.ConvertToBitmap(),
+              name=u'RESET', parent=self, pos=wx.Point(0, 0), #size=wx.Size(32,32), 
+              style=0)
         self.REBUILD.Bind(wx.EVT_BUTTON, self.OnREBUILDButton,
               id=wxID_CONSOLE_FRAMEREBUILD)
 
-        self.RESET = wx.Button(id=wxID_CONSOLE_FRAMERESET, label=u'RESET',
-              name=u'RESET', parent=self, pos=wx.Point(0, 0), size=wx.Size(84,
-              20), style=0)
+        self.RESET = wx.BitmapButton(id=wxID_CONSOLE_FRAMERESET, #label=u'RESET',
+              bitmap=icons.developerIcon.Image.ConvertToBitmap(),
+              name=u'RESET', parent=self, pos=wx.Point(0, 0), #size=wx.Size(32,32),
+               style=0)
 
         self.statusBar1 = wx.StatusBar(id=wxID_CONSOLE_FRAMESTATUSBAR1,
               name='statusBar1', parent=self, style=0)
@@ -89,24 +90,24 @@ class ConsoleFrame(wx.Frame):
     def __init__(self, parent):
         self._init_ctrls(parent)
         MenuBar = wx.MenuBar()
-
+        print wx.StandardPaths.Get().GetResourcesDir()
         FileMenu = wx.Menu()
         
-        item = FileMenu.Append(wx.ID_EXIT, text = "&Exit")
+        item = FileMenu.Append(wx.ID_EXIT, "Quit\tctrl-Q","BAIL")
         self.Bind(wx.EVT_MENU, self.OnQuit, item)
 
-        item = FileMenu.Append(wx.ID_ANY, text = "&Open Source Code")
+        item = FileMenu.Append(wx.ID_ANY, 'Open Program File\tctrl-O', 'Reload Firmware')
         self.Bind(wx.EVT_MENU, self.OnOpen, item)
 
-        item = FileMenu.Append(wx.ID_PREFERENCES, text = "&Preferences")
+        item = FileMenu.Append(wx.ID_PREFERENCES, 'Preferences\tctrl-,','Set Preferences')
         self.Bind(wx.EVT_MENU, self.OnPrefs, item)
 
         MenuBar.Append(FileMenu, "&File")
         
         HelpMenu = wx.Menu()
 
-        item = HelpMenu.Append(wx.ID_HELP, "Test &Help",
-                                "Help for this simple test")
+        item = HelpMenu.Append(wx.ID_HELP, 'Help\tctrl-?',
+                                "help at some point")
         self.Bind(wx.EVT_MENU, self.OnHelp, item)
 
         ## this gets put in the App menu on OS-X
@@ -123,7 +124,8 @@ class ConsoleFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.processSerial, self.serialTimer)
         self.serialTimer.Start(750)
             
-
+        self.libmaple_directory=libmaple_directory
+        self.program_code_directory=program_code_directory
 
 
         
@@ -145,18 +147,13 @@ class ConsoleFrame(wx.Frame):
         dlg.Destroy()
 
     def OnOpen(self, event):
-        dialog = wx.DirDialog(None, "Directory containing code :", style=wx.DD_DIR_MUST_EXIST )
+        dialog = wx.DirDialog(self, "Program Directory :", style=wx.DD_DIR_MUST_EXIST )
         if dialog.ShowModal() == wx.ID_OK:
             #libmaple_directory = dialog.GetPath()
-            program_code_directory=dialog.GetPath()
+            self.program_code_directory=dialog.GetPath()
+            self.libmaple_directory=self.program_code_directory + os.sep + '../../libmaple/'
             self.OnREBUILDButton(event)
         dialog.Destroy()
-
-#        dlg = wx.MessageDialog(self, "This would be an open Dialog\n"
-#                                     "If there was anything to open\n",
-#                                "Open File", wx.OK | wx.ICON_INFORMATION)
-#        dlg.ShowModal()
-#        dlg.Destroy()
 
     def OnPrefs(self, event):
         dlg = wx.MessageDialog(self, "This would be an preferences Dialog\n"
@@ -175,18 +172,22 @@ class ConsoleFrame(wx.Frame):
         self.device.attached=False
         try: 
             self.OUTPUT.AppendText(subprocess.check_output("make install",
-                              env={'BOARD': 'maple_mini','USER_MODULES': program_code_directory,
+                              env={'BOARD': 'maple_mini','USER_MODULES': self.program_code_directory,
                               'PATH': '/usr/local/arm-none-eabi/bin/:/usr/local/bin/:/usr/bin:/bin/:$PATH'},
                               #stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT,
                               shell=True,
-                              cwd=libmaple_directory))
+                              cwd=self.libmaple_directory))
             self.OUTPUT.AppendText('\n------------------- SUCCESS ------------------\n')
 
-        except CalledProcessError as e:
+        except subprocess.CalledProcessError as e:
             self.OUTPUT.AppendText(e.cmd +"Returned "+str(e.returncode))
             self.OUTPUT.AppendText(e.output)
             self.OUTPUT.AppendText('\n-------------------- FAIL --------------------\n')
+        except Exception as e:
+            self.OUTPUT.AppendText(str(e))
+            self.OUTPUT.AppendText('\n-------------------- FAIL --------------------\n')
+        
 
         time.sleep(1)
         self.OnReconnect()
@@ -208,7 +209,7 @@ class ConsoleFrame(wx.Frame):
             self.device.ser.close()
         self.statusBar1.SetStatusText("...Searching...",1)
         self.device.open(self.device.portname,9600,logger_only=True)
-        print "?",self.device.attached, self.device.logger_swv_string, self.device.ser
+        #print "?",self.device.attached, self.device.logger_swv_string, self.device.ser
         if self.device.ser is not None and self.device.ser.isOpen():
             self.statusBar1.SetStatusText(self.device.logger_swv_string,1)
         if event is not None:
@@ -240,16 +241,32 @@ class ConsoleFrame(wx.Frame):
 # stubs for mac events...
 
 
+class ConsoleApp(wx.App):
+    def OnInit(self):
+        self.main = ConsoleFrame(None)
+        self.main.Show()
+        self.SetTopWindow(self.main)
+        print sys.argv
+        if len(sys.argv)>1:
+            self.main.program_code_directory = os.path.dirname(os.path.realpath(sys.argv[1]))
+            self.main.libmaple_directory=self.main.program_code_directory + os.sep + '../../libmaple/'
+            self.main.OnREBUILDButton(None)
+ 
+        return True
+
     def MacOpenFile(self, filename):
         """Called for files droped on dock icon, or opened via finders context menu"""
         print filename
         print "%s dropped on app"%(filename) #code to load filename goes here.
-        program_code_directory = os.path.dirname(os.path.realpath(filename))
-        self.OnREBUILDButton()
+        self.main.program_code_directory = os.path.dirname(os.path.realpath(filename))
+        self.main.libmaple_directory=self.main.program_code_directory + os.sep + '../../libmaple/'
+
+        self.main.OnREBUILDButton(None)
         
     def MacReopenApp(self):
         """Called when the doc icon is clicked, and ???"""
-        self.BringWindowToFront()
+        print "hey!"
+        pass #self.main.BringWindowToFront()
 
     def MacNewFile(self):
         pass
@@ -258,12 +275,6 @@ class ConsoleFrame(wx.Frame):
         pass
     
 
-class ConsoleApp(wx.App):
-    def OnInit(self):
-        self.main = ConsoleFrame(None)
-        self.main.Show()
-        self.SetTopWindow(self.main)
-        return True
 
 def main():
     application = ConsoleApp(0)
