@@ -104,7 +104,9 @@ uint8_t NOPaction(uint8_t source) {
 
         return COMMAND_FORWARDED;
     }
-    else {
+    else if (source == DEVICE) {
+        toConsole((char *)deviceComm.line);
+    } else {
         return COMMAND_IGNORED;
     }
 }

@@ -5,10 +5,14 @@ import subprocess
 import datetime
 import time
 import os
+from wx.lib.embeddedimage import PyEmbeddedImage
 
 from AMAv2 import AMAv2
+import icons
+#self.button1 = wx.BitmapButton(self.panel1, id=-1, bitmap=image1,
 
-build_dir=os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../libmaple/'
+libmaple_directory=os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../libmaple/'
+program_code_directory='../programs/dumblogger'
 my_dir=os.path.dirname(os.path.realpath(__file__))
 
 
@@ -91,7 +95,7 @@ class ConsoleFrame(wx.Frame):
         item = FileMenu.Append(wx.ID_EXIT, text = "&Exit")
         self.Bind(wx.EVT_MENU, self.OnQuit, item)
 
-        item = FileMenu.Append(wx.ID_ANY, text = "&Open")
+        item = FileMenu.Append(wx.ID_ANY, text = "&Open Source Code")
         self.Bind(wx.EVT_MENU, self.OnOpen, item)
 
         item = FileMenu.Append(wx.ID_PREFERENCES, text = "&Preferences")
@@ -141,11 +145,18 @@ class ConsoleFrame(wx.Frame):
         dlg.Destroy()
 
     def OnOpen(self, event):
-        dlg = wx.MessageDialog(self, "This would be an open Dialog\n"
-                                     "If there was anything to open\n",
-                                "Open File", wx.OK | wx.ICON_INFORMATION)
-        dlg.ShowModal()
-        dlg.Destroy()
+        dialog = wx.DirDialog(None, "Directory containing code :", style=wx.DD_DIR_MUST_EXIST )
+        if dialog.ShowModal() == wx.ID_OK:
+            #libmaple_directory = dialog.GetPath()
+            program_code_directory=dialog.GetPath()
+            self.OnREBUILDButton(event)
+        dialog.Destroy()
+
+#        dlg = wx.MessageDialog(self, "This would be an open Dialog\n"
+#                                     "If there was anything to open\n",
+#                                "Open File", wx.OK | wx.ICON_INFORMATION)
+#        dlg.ShowModal()
+#        dlg.Destroy()
 
     def OnPrefs(self, event):
         dlg = wx.MessageDialog(self, "This would be an preferences Dialog\n"
@@ -164,12 +175,12 @@ class ConsoleFrame(wx.Frame):
         self.device.attached=False
         try: 
             self.OUTPUT.AppendText(subprocess.check_output("make install",
-                              env={'BOARD': 'maple_mini','USER_MODULES': '../programs/dumblogger',
+                              env={'BOARD': 'maple_mini','USER_MODULES': program_code_directory,
                               'PATH': '/usr/local/arm-none-eabi/bin/:/usr/local/bin/:/usr/bin:/bin/:$PATH'},
                               #stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT,
                               shell=True,
-                              cwd=build_dir))
+                              cwd=libmaple_directory))
             self.OUTPUT.AppendText('\n------------------- SUCCESS ------------------\n')
 
         except CalledProcessError as e:
@@ -180,7 +191,8 @@ class ConsoleFrame(wx.Frame):
         time.sleep(1)
         self.OnReconnect()
         #self.device.attached=True # should be handled by ama class
-        event.Skip()
+        if event is not None:
+            event.Skip()
 
     def OnCMDText(self, event):
         comm=self.CMD.GetValue().rstrip('\r\n')
@@ -196,6 +208,9 @@ class ConsoleFrame(wx.Frame):
             self.device.ser.close()
         self.statusBar1.SetStatusText("...Searching...",1)
         self.device.open(self.device.portname,9600,logger_only=True)
+        print "?",self.device.attached, self.device.logger_swv_string, self.device.ser
+        if self.device.ser is not None and self.device.ser.isOpen():
+            self.statusBar1.SetStatusText(self.device.logger_swv_string,1)
         if event is not None:
             event.Skip()
 
@@ -221,6 +236,26 @@ class ConsoleFrame(wx.Frame):
         self.device_was_already_attached=self.device.attached
         if event is not None:
             event.Skip()
+            
+# stubs for mac events...
+
+
+    def MacOpenFile(self, filename):
+        """Called for files droped on dock icon, or opened via finders context menu"""
+        print filename
+        print "%s dropped on app"%(filename) #code to load filename goes here.
+        program_code_directory = os.path.dirname(os.path.realpath(filename))
+        self.OnREBUILDButton()
+        
+    def MacReopenApp(self):
+        """Called when the doc icon is clicked, and ???"""
+        self.BringWindowToFront()
+
+    def MacNewFile(self):
+        pass
+    
+    def MacPrintFile(self, file_path):
+        pass
     
 
 class ConsoleApp(wx.App):

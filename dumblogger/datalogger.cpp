@@ -172,12 +172,25 @@ static void serialTasks() {
         if ((((ch=SerialUSB.read())!='\r') && (ch!='\n'))
             &&(consoleComm.len<MAX_COMMAND_LINE_LENGTH)
             ) {
-                consoleComm.line[consoleComm.len++] = ch;
+            consoleComm.line[consoleComm.len++] = ch;
         } else {
             if (consoleComm.len) {
                 consoleComm.gotline = true;
             }
             consoleComm.line[consoleComm.len]='\0';
+        }
+        //SerialUSB.write(ch);
+    }
+    while ((deviceComm.gotline==false) && (Serial1.available())) {
+        if ((((ch=Serial1.read())!='\r') && (ch!='\n'))
+            &&(deviceComm.len<MAX_COMMAND_LINE_LENGTH)
+            ) {
+            deviceComm.line[deviceComm.len++] = ch;
+        } else {
+            if (deviceComm.len) {
+                deviceComm.gotline = true;
+            }
+            deviceComm.line[deviceComm.len]='\0';
         }
         //SerialUSB.write(ch);
     }
