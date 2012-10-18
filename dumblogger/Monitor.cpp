@@ -33,6 +33,7 @@
 
 const char *keywords = KEYWORDS LOGGERKEYWORDS;
 
+char debugBuffer[MAX_COMMAND_LINE_LENGTH]; //return buffer for console actions allocate this once use it often. 
 char actionBuffer[MAX_COMMAND_LINE_LENGTH]; //return buffer for console actions allocate this once use it often. 
 const char *theNak="NAK:";
 
@@ -77,12 +78,26 @@ char * lookupKey(int ndx, char *keyBuff) {
     return keyBuff;
 }
 
-void toDevice(char *buff){ 
-    usart_tx(USART1, (uint8_t *)buff, strlen(buff));
+void toDevice(const char *format, ...){ 
+    va_list args;    
+    va_start( args, format );
+    vsprintf(actionBuffer, format, args );
+    usart_tx(USART1, (uint8_t *)actionBuffer, strlen(actionBuffer));
     usart_tx(USART1, (uint8_t *)"\r\n", 2);
-    ;
+    va_end(args);
 }
-extern "C" {int sdoPrintf(char *out, const char *format, ...);}
+
+void debug(const char *format, ...){ 
+    va_list args;    
+    va_start( args, format );
+    debugBuffer[0]='L',debugBuffer[1]='D',debugBuffer[2]='B',debugBuffer[3]=':',
+    vsprintf(debugBuffer+4, format, args );
+    if(SerialUSB.isConnected() && (SerialUSB.getDTR() || SerialUSB.getRTS())) {        
+        SerialUSB.write(debugBuffer);
+        SerialUSB.write("\r\n");
+    }
+    va_end(args);
+}
 
 void toConsole(const char *format, ...){ 
     va_list args;    
@@ -98,7 +113,7 @@ void toConsole(const char *format, ...){
 
 uint8_t NOPaction(uint8_t source) {  
     if (source==CONSOLE) {
-        toConsole("DBG: Forwarding (%c%c%c)!", 
+        debug("Forwarding (%c%c%c)!", 
                   consoleComm.line[0], consoleComm.line[1], consoleComm.line[2]);
         toDevice((char *)consoleComm.line);
 

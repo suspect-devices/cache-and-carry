@@ -19,8 +19,8 @@
  */
 #include "SdFat.h"
 //#include <avr/pgmspace.h>
-#include <WProgram.h>
-#include "HardwareSPI.h"
+#include <wirish/WProgram.h>
+#include <wirish/HardwareSPI.h>
 #include <string.h>
 
 //------------------------------------------------------------------------------

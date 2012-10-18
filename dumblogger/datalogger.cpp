@@ -65,6 +65,7 @@
 #include <libmaple/usart.h>
 //extern "C" {
 #include "Monitor.h"
+#include "Utilities.h"
 //}
 
 /* Global Variables */
@@ -74,7 +75,9 @@
 
 HardwareSPI spi(1);
 //Sd2Card card(&spi);
-Sd2Card card;
+//Sd2Card card;HardwareSPI spi(1);
+Sd2Card card(spi, USE_NSS_PIN);
+
 SdVolume volume;
 SdFile root;
 SdFile file;
@@ -95,12 +98,12 @@ time_t epoch=0;
 #define MAX_TIME_LENGTH 24
 
 
-char deviceSSN[MAX_SSN_LENGTH]="00000000000";
+char deviceSSN[MAX_SSN_LENGTH]="00000000100";
 char deviceHWV[MAX_HWV_LENGTH]="0";
 char deviceSWV[MAX_SWV_LENGTH]="0.0-000000";
 time_t deviceLastContact=0L;
 bool deviceIsConnected=false;
-
+int sdCardStatus=0;
 const int sensor_pin = 12;
 
 
@@ -109,7 +112,8 @@ const int sensor_pin = 12;
  *----------------------------------------------------------------------------*/
 
 void hardwareSetup(void) {
-    spi.begin(SPI_281_250KHZ, MSBFIRST, 0);
+    spi.begin(SPI_281_250KHZ, MSBFIRST, 0); // move to sdcard init?
+    
 
     pinMode(YEL_LED, OUTPUT);
     pinMode(GRN_LED, OUTPUT);
@@ -118,22 +122,10 @@ void hardwareSetup(void) {
     digitalWrite(BLU_LED, LOW);
     digitalWrite(GRN_LED, HIGH);
     SerialUSB.begin();  
-    
-    if (!card.init(&spi)) { 
-    //if (!card.init()) { 
-        toConsole("FTL: card.init failed");
-    }
-    delay(100);
-    
-    // initialize a FAT volume
-    if (!volume.init(&card)) {
-        toConsole("FTL: volume.init failed\r\n");
-    }
-    
-    // open the root directory
-    if (!root.openRoot(&volume)) 
-        toConsole("FTL: openRoot failed\r\n");
-    
+    Serial1.begin(9600);  
+    Serial2.begin(9600); 
+    // probably should initialize the monitor.
+    sdCardStatus=sdCardInit();
     
 }
 /*-----------------------------------------------------------------------Setup()
@@ -153,6 +145,9 @@ void setup( void )
     
     // Setup the sensor pin as an analog input
     pinMode(sensor_pin,INPUT_ANALOG);
+    
+    registerAction(_DIR_, DIRaction);
+
     
 }
 

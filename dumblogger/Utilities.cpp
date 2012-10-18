@@ -41,26 +41,17 @@ int openNextFile() {
     int max=0;
     char numpart[4];
     root.rewind();
-    while (root.readDir(p)>0) {
+    while (root.readDir(&p)>0) {
         //Watchdog_Reset();
         togglePin(YEL_LED);
         togglePin(GRN_LED);
-        
-        // done if past last used entry
-        if (p.name[0] == DIR_NAME_FREE) break;
-        
-        // skip deleted entry and entries for . and  ..
-        if (p.name[0] == DIR_NAME_DELETED || p.name[0] == '.') continue;
-        
-        // only list subdirectories and files
-        if (!DIR_IS_FILE_OR_SUBDIR(&p)) continue;
         
 #ifdef REMOVE_ALL_ZERO_LENGTH_FILES
         // delete 0 length files;
         if (p.fileSize==0) {
             p.name[0] = DIR_NAME_DELETED;
             continue;
-           
+            
         }
 #endif        
         if (!strncmp("LOG", p.name, 3) && !strncmp("TXT", p.name+8, 3)) {
@@ -77,9 +68,49 @@ int openNextFile() {
          p.name[8],p.name[9],p.name[10],max);
          */      
     }
-     //SdVolume::CacheFlush(); to finish deleting files.
+    //SdVolume::CacheFlush(); to finish deleting files.
     return max;
     
 }
+
+char * nextFileName(bool rewind){
+    static dir_t p;
+    //bool done=false;
+    if (rewind) root.rewind();
+    if (root.readDir(&p)>0) {
+        return p.name;
+    }        
+    return NULL;
+}
+
+uint8_t DIRaction(uint8_t source){
+    bool firstname=true;
+    char * filename;
+    toConsole("SOD:");
+    while ((filename=nextFileName(firstname))!=NULL) {
+        toConsole("%s",filename);
+        firstname=false;
+    }
+    toConsole("EOD:");
+} 
+
+int sdCardInit(void) {
+    if (!card.init()) { 
+        return(_SD_CARD_INIT_FAILED_);
+    }
+    delay(100);
+    
+    // initialize a FAT volume
+    if (!volume.init(&card)) {
+        return(_SD_VOLUME_INIT_FAILED_);
+    }
+    
+    // open the root directory
+    if (!root.openRoot(&volume)) {
+        return(_SD_OPEN_ROOT_FAILED_);
+    }
+    return(_SD_CARD_OK_);
+}
+
 
 

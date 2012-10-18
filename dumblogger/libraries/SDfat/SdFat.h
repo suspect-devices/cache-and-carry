@@ -24,9 +24,10 @@
  * SdFile and SdVolume classes
  */
 //#include <avr/pgmspace.h>
+#include <wirish/Print.h>
 #include "Sd2Card.h"
 #include "FatStructs.h"
-#include "Print.h"
+
 //------------------------------------------------------------------------------
 /**
  * Allow use of deprecated functions if non-zero

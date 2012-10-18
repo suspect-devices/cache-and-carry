@@ -34,7 +34,9 @@
 #include <SdFat.h>
 #include <HardwareSPI.h>
 #include <string.h>
+#include <wirish/wirish.h>
 // move this to a project settings file.
+#include "Monitor.h"
 
 #define BLU_LED 19
 #define YEL_LED 18
@@ -42,10 +44,17 @@
 #define LED_ON  LOW
 #define LED_OFF HIGH
 
+enum sdCardErrors {
+    _SD_CARD_OK_=0,
+    _SD_CARD_INIT_FAILED_,
+    _SD_VOLUME_INIT_FAILED_,
+    _SD_OPEN_ROOT_FAILED_,
+};
+
 /*-----------------------------------------------------------------------------
  * file handling
  *----------------------------------------------------------------------------*/
-
+extern HardwareSPI spi;
 extern Sd2Card card;
 extern SdVolume volume;
 extern SdFile root;
@@ -53,3 +62,6 @@ extern SdFile file;
 
 
 int openNextFile(void);
+int sdCardInit(void);
+uint8_t DIRaction(uint8_t source);  
+

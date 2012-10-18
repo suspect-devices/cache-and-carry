@@ -62,7 +62,7 @@ class ConsoleFrame(wx.Frame):
         self.CMD.Bind(wx.EVT_KILL_FOCUS, self.OnCMDKillFocus)
 
         self.OUTPUT = wx.TextCtrl(id=wxID_CONSOLE_FRAMEOUTPUT, name=u'OUTPUT',
-              parent=self, pos=wx.Point(0, 40), size=wx.Size(100, 22), style=wx.TE_MULTILINE,
+              parent=self, pos=wx.Point(0, 40), size=wx.Size(100, 22), style=wx.TE_MULTILINE|wx.VSCROLL,
               value=u'')
         self.OUTPUT.SetEditable(False)
         #self.OUTPUT.SetAutoLayout(True)

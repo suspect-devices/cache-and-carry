@@ -12,74 +12,55 @@
 #include <stdint.h>
 
 HardwareSPI spi(1);
-Sd2Card card;
+Sd2Card card(spi, USE_NSS_PIN, true);
 SdVolume volume;
 SdFile root;
 SdFile file;
 
-void setup() 
-{
+void setup() {
   SerialUSB.begin();
-  spi.begin(SPI_281_250KHZ, MSBFIRST, 0);
   SerialUSB.println("type any char to start");
   while (!SerialUSB.available());
   SerialUSB.println();
 
-  if (!card.init(&spi)) 
+  // initialize the SD card
+  if (!card.init())
     SerialUSB.println("card.init failed");
   else
     SerialUSB.println("card.init passed");
-//  spi.end();
-  
-//  spi.begin(SPI_9MHZ, MSBFIRST, 0);
-  spi.begin(SPI_4_5MHZ, MSBFIRST, 0);
-  
+
   delay(100);
-  
+
   // initialize a FAT volume
-  if (!volume.init(&card,1)) 
+  if (!volume.init(&card,1))
     SerialUSB.println("volume.init failed");
   else
     SerialUSB.println("volume.init passed");
-    
+
   // open the root directory
-  if (!root.openRoot(&volume)) 
+  if (!root.openRoot(&volume))
     SerialUSB.println("openRoot failed");
   else
     SerialUSB.println("openRoot passed");
-    
+
   // open a file
-  if (file.open(&root, "Read.txt", O_READ)) 
+  if (file.open(&root, "Read.txt", O_READ))
   {
     SerialUSB.println("Opened Read.txt");
-    for(int i=0; i<15; i++)
-      SerialUSB.print((char)file.read());
+    int16_t c;
+    while ((c = file.read()) > 0)
+      SerialUSB.print((char)c);
     SerialUSB.println("");
   }
   else
   {
     SerialUSB.println("file.open failed");
   }
-  SerialUSB.println();  
-  
-  int16_t n;
-  uint8_t buf[7];// nothing special about 7, just a lucky number.
-  while ((n = file.read(buf, sizeof(buf))) > 0) 
-  {
-    for (uint8_t i = 0; i < n; i++) 
-      SerialUSB.print(buf[i]);
-  }
-  /* easier way
-  int16_t c;
-  while ((c = file.read()) > 0) Serial.print((char)c);
-  */
-  SerialUSB.println("\nDone");
+  SerialUSB.println();
+
+  SerialUSB.println("Done");
   spi.end();
-  
 }
 
-void loop() 
-{
+void loop() {
 }
-
-

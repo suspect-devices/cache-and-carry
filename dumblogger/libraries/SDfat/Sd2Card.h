@@ -25,14 +25,21 @@
  */
 #include "Sd2PinMap.h"
 #include "SdInfo.h"
-#include "HardwareSPI.h"
+#include <wirish/HardwareSPI.h>
 
 /** Set SCK to max rate of F_CPU/2. See Sd2Card::setSckRate(). */
-uint8_t const SPI_FULL_SPEED = 0;
+SPIFrequency const SPI_FULL_SPEED = SPI_18MHZ;
 /** Set SCK rate to F_CPU/4. See Sd2Card::setSckRate(). */
-uint8_t const SPI_HALF_SPEED = 1;
+SPIFrequency const SPI_HALF_SPEED = SPI_9MHZ;
 /** Set SCK rate to F_CPU/8. Sd2Card::setSckRate(). */
-uint8_t const SPI_QUARTER_SPEED = 2;
+SPIFrequency const SPI_QUARTER_SPEED = SPI_4_5MHZ;
+
+/* Set SCK to max rate of F_CPU/2. See Sd2Card::setSckRate().
+uint8_t const SPI_FULL_SPEED = 0;
+ Set SCK rate to F_CPU/4. See Sd2Card::setSckRate().
+uint8_t const SPI_HALF_SPEED = 1;
+ Set SCK rate to F_CPU/8. Sd2Card::setSckRate().
+uint8_t const SPI_QUARTER_SPEED = 2;*/
 //------------------------------------------------------------------------------
 /** Protect block zero from write if nonzero */
 #define SD_PROTECT_BLOCK_ZERO 1
@@ -99,6 +106,8 @@ uint8_t const SD_CARD_TYPE_SD2 = 2;
 /** High Capacity SD card */
 uint8_t const SD_CARD_TYPE_SDHC = 3;
 //------------------------------------------------------------------------------
+int8_t const USE_NSS_PIN = -1;
+
 /**
  * \class Sd2Card
  * \brief Raw access to SD and SDHC flash memory cards.
@@ -106,7 +115,7 @@ uint8_t const SD_CARD_TYPE_SDHC = 3;
 class Sd2Card {
  public:
   /** Construct an instance of Sd2Card. */
-  Sd2Card(void) : errorCode_(0), inBlock_(0), partialBlockRead_(0), type_(0) {}
+  Sd2Card(HardwareSPI &s, bool autoSetup = false);
   uint32_t cardSize(void);
   uint8_t erase(uint32_t firstBlock, uint32_t lastBlock);
   uint8_t eraseSingleBlockEnable(void);
@@ -116,26 +125,14 @@ class Sd2Card {
   uint8_t errorCode(void) const {return errorCode_;}
   /** \return error data for last error. */
   uint8_t errorData(void) const {return status_;}
-  /**
-   * Initialize an SD flash memory card with default clock rate and chip
-   * select pin.  See sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin).
-   */
-  uint8_t init(void) {
-//    return init(SPI_FULL_SPEED, SD_CHIP_SELECT_PIN);
-    return false;
-  }
 
   /**
    * Initialize an SD flash memory card with the selected SPI clock rate
    * and the default SD chip select pin.
    * See sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin).
    */
-  uint8_t init(uint8_t sckRateID) {
-//    return init(sckRateID, SD_CHIP_SELECT_PIN);
-	  return false;
-  }
+  uint8_t init(SPIFrequency sckRateID = SPI_QUARTER_SPEED, int8_t chipSelectPin = USE_NSS_PIN);
 
-  uint8_t init(HardwareSPI *);
   void partialBlockRead(uint8_t value);
   /** Returns the current value, true or false, for partial block read. */
   uint8_t partialBlockRead(void) const {return partialBlockRead_;}
@@ -164,6 +161,10 @@ class Sd2Card {
   uint8_t writeStart(uint32_t blockNumber, uint32_t eraseCount);
   uint8_t writeStop(void);
  private:
+  //pointer to spi object
+  HardwareSPI &SPIn;
+  uint8_t CSpin;
+  bool setup;
   uint32_t block_;
   uint8_t chipSelectPin_;
   uint8_t errorCode_;

@@ -18,7 +18,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 #include "SdFat.h"
-#include <usb_serial.h>
+
+#ifdef ASSUME_SERIAL_DEBUGGING
+#include <libmaple/usb_serial.h> 
+#endif
 
 //------------------------------------------------------------------------------
 // raw block cache
@@ -277,13 +280,17 @@ uint8_t SdVolume::init(Sd2Card* dev, uint8_t part)
   {
     if (part > 4)
 	{
+#ifdef ASSUME_SERIAL_DEBUGGING
 		SerialUSB.println("Error: SdVolume::init() MBR");
+#endif
 		return false;
 	}
 
     if (!cacheRawBlock(volumeStartBlock, CACHE_FOR_READ)) 
 	{
+#ifdef ASSUME_SERIAL_DEBUGGING
 		SerialUSB.println("Error: SdVolume::init() Cache for read");
+#endif
 		return false;
 	}
 
@@ -294,15 +301,18 @@ uint8_t SdVolume::init(Sd2Card* dev, uint8_t part)
       p->firstSector == 0) 
 	{
       // not a valid partition
-	
+#ifdef ASSUME_SERIAL_DEBUGGING	
 	  SerialUSB.println("Error: SdVolume::init() Invalid partition");
-	  return false;
+#endif
+        return false;
     }
 	volumeStartBlock = p->firstSector;
   }
   if (!cacheRawBlock(volumeStartBlock, CACHE_FOR_READ)) 
   {
+#ifdef ASSUME_SERIAL_DEBUGGING
 	  SerialUSB.println("Error: SdVolume::init() Cache for read2");
+#endif
 	  return false;
   }
 
@@ -313,7 +323,9 @@ uint8_t SdVolume::init(Sd2Card* dev, uint8_t part)
     bpb->sectorsPerCluster == 0) 
   {
        // not valid FAT volume
+#ifdef ASSUME_SERIAL_DEBUGGING
       SerialUSB.println("Error: SdVolume::init() invalid FAT volume");
+#endif
       return false;
   }
   fatCount_ = bpb->fatCount;
@@ -327,7 +339,9 @@ uint8_t SdVolume::init(Sd2Card* dev, uint8_t part)
     if (clusterSizeShift_++ > 7) 
 	{
 		return false;
-		SerialUSB.println("Error: SdVolume::init() not power of 2");
+#ifdef ASSUME_SERIAL_DEBUGGING
+        SerialUSB.println("Error: SdVolume::init() not power of 2");
+#endif
 	}
   }
   blocksPerFat_ = bpb->sectorsPerFat16 ?

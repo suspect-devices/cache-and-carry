@@ -144,7 +144,7 @@ _DTM_,_DID_,_LVB_,_LSV_
 #include <stdint.h>
 #include <wirish/wirish.h>
 
-#include "MapleFreeRTOS.h"
+//#include "MapleFreeRTOS.h"
 #include <libmaple/timer.h>
 #include <libmaple/usart.h>
 
@@ -175,7 +175,7 @@ typedef struct __cmdbuff {
     int kwIndex;
     bool gotline;
     uint8_t len;
-    xSemaphoreHandle xGotLineSemaphore;
+//    xSemaphoreHandle xGotLineSemaphore;
 } cmdBuffer;
 
 
@@ -199,7 +199,7 @@ char *lookupKey(int ndx, unsigned char *keyBuffer);
 int handleDeviceInput(cmdBuffer *);
 int handleConsoleInput(cmdBuffer *);
 void toConsole(const char *format, ...);
-void toDevice(char *);
+void toDevice(const char *format, ...);
 void registerAction(uint8_t, actionptr);
 char *actBuff(const char *format, ...);
 #endif
