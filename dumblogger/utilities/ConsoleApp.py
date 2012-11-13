@@ -10,7 +10,7 @@ import sys
 from AMAv2 import AMAv2
 import icons
 
-libmaple_directory=os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../../libmaple/'
+libmaple_directory=os.path.dirname(os.path.realpath(__file__)) + os.sep + '../../../../libmaple/'
 program_code_directory='../programs/dumblogger'
 my_dir=os.path.dirname(os.path.realpath(__file__))
 
@@ -249,7 +249,7 @@ class ConsoleApp(wx.App):
         print sys.argv
         if len(sys.argv)>1:
             self.main.program_code_directory = os.path.dirname(os.path.realpath(sys.argv[1]))
-            self.main.libmaple_directory=self.main.program_code_directory + os.sep + '../../libmaple/'
+            self.main.libmaple_directory=self.main.program_code_directory + os.sep + '../../../libmaple/'
             self.main.OnREBUILDButton(None)
  
         return True
@@ -258,8 +258,8 @@ class ConsoleApp(wx.App):
         """Called for files droped on dock icon, or opened via finders context menu"""
         print filename
         print "%s dropped on app"%(filename) #code to load filename goes here.
-        self.main.program_code_directory = os.path.dirname(os.path.realpath(filename))
-        self.main.libmaple_directory=self.main.program_code_directory + os.sep + '../../libmaple/'
+        self.main.program_code_directory = os.path.dirname(os.path.realpath(filename))+os.sep + '../'
+        self.main.libmaple_directory=os.path.dirname(os.path.realpath(filename)) + os.sep + '../../../libmaple/'
 
         self.main.OnREBUILDButton(None)
         

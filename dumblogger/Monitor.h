@@ -89,7 +89,7 @@
 #include <errno.h>
 #include <sys/types.h>
 
-#define BOM_VERSION "BOM5K_"__DATE__
+//#define BOM_VERSION "BOM5K_"__DATE__
 #define BOM_VERSION "BOM5K_GEN_"__DATE__ " "__TIME__
 
 #define KEYWORDS \
@@ -114,14 +114,14 @@ _RED_,_GRN_,_BLU_,_TSS_,_NOP_
 "DIR"\
 "DEL" "TX2" "TYP" "NSC" "NJN" "NPW" "NST" "TPT" "FMT" "PKY"\
 "PFD" "PTO" "PIP" "PON" "POF" "SSV" "SGT" "TFN" "TFD" "LTM" "DVP" "DVT"\
-"DTM" "DID" "LVB" "LSV" 
+"DTM" "DID" "LVB" "LFM" "LAM" "LFR" "LSV" 
 
 
 enum loggerKeywordIndex {
 _DIR_=_NOP_+1,
 _DEL_,_TX2_,_TYP_,_NSC_,_NJN_,_NPW_,_NST_,_TPT_,_FMT_,_PKY_,
 _PFD_,_PTO_,_PIP_,_PON_,_POF_,_SSV_,_SGT_,_TFN_,_TFD_,_LTM_,_DVP_,_DVT_,
-_DTM_,_DID_,_LVB_,_LSV_
+_DTM_,_DID_,_LVB_,_LFM_,_LAM_,_LFR_,_LSV_
 };
 
 //int patchubeIndex[]={_TS1_,_TS2_,_TS3_,_TS4_,_TS5_,_FAN_,_CHL_,_STC_};
@@ -144,9 +144,22 @@ _DTM_,_DID_,_LVB_,_LSV_
 #include <stdint.h>
 #include <wirish/wirish.h>
 
-//#include "MapleFreeRTOS.h"
+#include <sys/stat.h>
+#include <errno.h>
+
+#include <libmaple/libmaple.h>
 #include <libmaple/timer.h>
 #include <libmaple/usart.h>
+
+#ifndef CONFIG_HEAP_START
+extern char _lm_heap_start;
+#define CONFIG_HEAP_START               ((caddr_t)&_lm_heap_start)
+#endif
+#ifndef CONFIG_HEAP_END
+extern char _lm_heap_end;
+#define CONFIG_HEAP_END                 ((caddr_t)&_lm_heap_end)
+#endif
+
 
 #ifndef uint8_t 
 #ifndef uint8
@@ -187,6 +200,7 @@ enum sourceTypes {
     DEVICE 
 };
 enum inputReturnValues {
+    COMMAND_INVALID=-2,
     COMMAND_ERROR=-1,
     COMMAND_OK,
     COMMAND_FORWARDED,
@@ -202,4 +216,6 @@ void toConsole(const char *format, ...);
 void toDevice(const char *format, ...);
 void registerAction(uint8_t, actionptr);
 char *actBuff(const char *format, ...);
+void setupKeywords(void);
+
 #endif

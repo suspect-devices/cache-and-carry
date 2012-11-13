@@ -39,7 +39,7 @@ int openNextFile() {
     dir_t p;//=&root;
     int current;
     int max=0;
-    char numpart[4];
+    char numpart[5];
     root.rewind();
     while (root.readDir(&p)>0) {
         //Watchdog_Reset();
@@ -57,8 +57,9 @@ int openNextFile() {
         if (!strncmp("LOG", p.name, 3) && !strncmp("TXT", p.name+8, 3)) {
             numpart[0]=p.name[3];    
             numpart[1]=p.name[4];    
-            numpart[2]=p.name[5];    
-            numpart[3]='\0';
+            numpart[2]=p.name[5];
+            numpart[3]=p.name[6];
+            numpart[4]='\0';
             current=atoi(numpart);
             if ( current > max ) max=current;
         }
@@ -86,13 +87,45 @@ char * nextFileName(bool rewind){
 uint8_t DIRaction(uint8_t source){
     bool firstname=true;
     char * filename;
-    toConsole("SOD:");
-    while ((filename=nextFileName(firstname))!=NULL) {
-        toConsole("%s",filename);
-        firstname=false;
+    
+    if (source==CONSOLE) {
+        toConsole("SOD:");
+        while ((filename=nextFileName(firstname))!=NULL) {
+            toConsole("%s",filename);
+            firstname=false;
+        }
+        toConsole("EOD:");
+        return COMMAND_OK;
+    } else {
+        toDevice("NAK:");
+        return COMMAND_IGNORED;
     }
-    toConsole("EOD:");
-} 
+    
+    
+}
+
+uint8_t TYPaction(uint8_t source){
+    char * filename=(char *)consoleComm.args;
+    SdFile myFile;
+    char buf[65];
+    int n;
+    if (source==CONSOLE) {
+        toConsole("SOD:%s",filename);
+        if( myFile.open(&root, filename, O_READ) ) {
+            while ((n = myFile.read(buf, sizeof(buf)-1)) > 0) {
+                buf[n]='\0';
+                toConsole(buf);
+            }
+        }
+        toConsole("EOD:%s",filename);
+        return COMMAND_OK;
+    } else {
+        toDevice("NAK:");
+        return COMMAND_IGNORED;
+    }
+    
+    
+}
 
 int sdCardInit(void) {
     if (!card.init()) { 

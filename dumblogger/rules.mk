@@ -30,7 +30,7 @@ PROJECT_INCLUDE_DIR := $(d)/include
 # appropriate GCC -I switches to let you include libmaple headers.
 CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES)
 # We'll also want our local include directory
-CFLAGS_$(d) += -I$(PROJECT_INCLUDE_DIR) -I$(d)/libraries/SDfat -I$(d)/libraries/FreeRTOS
+CFLAGS_$(d) += -I$(PROJECT_INCLUDE_DIR) -I$(d)/libraries/SDfat #-I$(d)/libraries/FreeRTOS
 # -I$(d)/libraries/MapleRTC
 
 # CXXFLAGS_$(d) are extra flags passed to the C++ compiler. We'll need

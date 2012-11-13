@@ -162,7 +162,7 @@ static void ledTask()
 
 static void serialTasks() {
     char ch;
-
+    setupKeywords();
     while ((consoleComm.gotline==false) && (SerialUSB.available())) {
         if ((((ch=SerialUSB.read())!='\r') && (ch!='\n'))
             &&(consoleComm.len<MAX_COMMAND_LINE_LENGTH)
@@ -205,6 +205,7 @@ int main(void) {
         if (consoleComm.gotline) {            
             handleConsoleInput(&consoleComm);
         }
+    
             
    }
     

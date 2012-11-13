@@ -121,9 +121,8 @@ uint8_t NOPaction(uint8_t source) {
     }
     else if (source == DEVICE) {
         toConsole((char *)deviceComm.line);
-    } else {
-        return COMMAND_IGNORED;
     }
+    return COMMAND_IGNORED;
 }
 uint8_t ACKaction (uint8_t source) {
     if (source==CONSOLE) {
@@ -155,15 +154,46 @@ uint8_t LSVaction (uint8_t source) {
     }
 }    
 
+void * bigbuff;
+
+uint8_t LAMaction (uint8_t source) {
+    if (source==CONSOLE) {
+        bigbuff=malloc(256);
+        toConsole("LAM:");
+        return COMMAND_OK;
+    } else {
+        toDevice("NAK:");
+        return COMMAND_IGNORED;
+    }
+}    
+uint8_t LFRaction (uint8_t source) {
+    if (source==CONSOLE) {
+        free(bigbuff);
+        toConsole("LFR:");
+        return COMMAND_OK;
+    } else {
+        toDevice("NAK:");
+        return COMMAND_IGNORED;
+    }
+}    
+
 extern char _lm_heap_end;
 extern char _lm_heap_start;
-extern caddr_t _sbrk(int incr); //this doesnt resolve. 
-
-int getFreeMemory() // none of this works. 
-{   static int freeMemory;
-    //if (freeMemory-(int)((caddr_t)&_lm_heap_end) - (int)((caddr_t)&_lm_heap_start)) { SerialUSB.write("!");}
-    //freeMemory=(int)((caddr_t)&_lm_heap_end) - (int)((caddr_t)&_lm_heap_start);
-    freeMemory=(int)((caddr_t)&_lm_heap_end) - (int)(&freeMemory);
+extern "C" {
+    caddr_t _sbrk(int incr); //this doesnt resolve. 
+}
+unsigned long int getFreeMemory() // none of this works. 
+{   static long int *testMalloc;
+    unsigned long int freeMemory;
+    
+    testMalloc = (long int *) malloc(10);
+    if (testMalloc==0) return 0;
+//    freeMemory = (unsigned long int)CONFIG_HEAP_END - (unsigned long int)(testMalloc);
+    freeMemory = (unsigned long int)(&freeMemory) - (unsigned long int)(testMalloc);
+//    freeMemory = (unsigned long int)CONFIG_HEAP_END - (unsigned long int) _sbrk(0);
+//    freeMemory = (long unsigned int) (&freeMemory) - (unsigned long int) _sbrk(0);
+    
+    free(testMalloc);
     return freeMemory;
 }
 
@@ -172,7 +202,7 @@ uint8_t MEMaction (uint8_t source) {
     if (consoleComm.verb=='?') {
         int memory;
         memory=getFreeMemory();
-        toConsole(actionBuffer,"MEM:%d",memory);;
+        toConsole("MEM:%ld",memory);;
         return COMMAND_OK;
     } else {
         toConsole("NAK:");
@@ -182,93 +212,22 @@ uint8_t MEMaction (uint8_t source) {
 }
 
 
-actionptr actions[NKEYWORDS] = {
-    &ACKaction,    //SYN [!  ] sync (hello)
-    &ACKaction,    //ACK [ : ] acknowlege (yes)
-    &NAKaction,    //NAK [ : ] negative ack (no)
-    &NOPaction,    //SWV [ :?] Software Version
-    &NOPaction,    //HWV [ :?] Hardware Version
-    &MEMaction,    //MEM [ :?] Avaliable Memory
-    &NOPaction,    //SSN [ :?] Serial Number
-    &NOPaction,    //HLP [!: ] help
-    &NOPaction,    //FTL [!: ] Fatal Error
-    &NOPaction,    //ALT [!: ] Alert
-    &NOPaction,    //WRN [!: ] Warning
-    &NOPaction,    //INF [!: ] Info
-    &NOPaction,    //DBG [!: ] Debugging Info
-    &NOPaction,    //LOG [!: ] Log
-    &NOPaction,    //STC [!: ] State Change
-    &NOPaction,    //DVL [!:?] Display Level
-    &NOPaction,    //LVL [!:?] Log Level
-    &NOPaction,    //DLG [!:?] Dumb Logger
-    &NOPaction,    //RST [!  ] Reboot the system
-    &NOPaction,    //SHD [!: ] Shutdown 
-    &NOPaction,    //ALM [!  ] Alarm Sound
-    &NOPaction,    //CPT [!  ] UI Print
-    &NOPaction,    //CND [!  ] UI Indicate
-    &NOPaction,    //BTN [ :?] Button Press
-    &NOPaction,    //WBP [!: ] Wait for Button
-    &NOPaction,    //ERF [!:?] UI Error Flag
-    &NOPaction,    //NOW [!:?] Time as a long int
-    &NOPaction,    //TIM [ :?] Time as a string
-    &NOPaction,    //THR [ :?] Time as a string
-    &NOPaction,    //THM [ :?] Time as a string
-    &NOPaction,    //DFR [!: ] Defrost
-    &NOPaction,    //TS1 [ :?] Temp Sensor 1
-    &NOPaction,    //TS2 [ :?] Temp Sensor 2
-    &NOPaction,    //TS3 [ :?] Temp Sensor 3
-    &NOPaction,    //TS4 [ :?] Temp Sensor 4
-    &NOPaction,    //TS5 [ :?] Temp Sensor 5
-    &NOPaction,    //AMT [ :?] Temp Sensor 6
-    &NOPaction,    //CHT [ :?] Temp Sensor 7
-    &NOPaction,    //AIT [ :?] Temp Sensor 8
-    &NOPaction,    //FAN [!:?] Fan Output
-    &NOPaction,    //CHL [!:?] Chiller Out 
-    &NOPaction,    //TMP [ :?] Temperature 
-    &NOPaction,    //PWR [!:?] Chiller Power
-    &NOPaction,    //PCT [ :?] Percent 
-    &NOPaction,    //TSC [   ] Rescan Temp Sensors
-    &NOPaction,    //CPR [   ] Chiller Pid Reset 
-    &NOPaction,    //CPP [   ] Chiller Pid P
-    &NOPaction,    //CPI [   ] Chiller Pid I
-    &NOPaction,    //CPD [   ] Chiller Pid D
-    &NOPaction,    //FPP [   ] Fan Pid P
-    &NOPaction,    //FPI [   ] Fan Pid I 
-    &NOPaction,    //FPD [   ] Fan Pid D
-    &NOPaction,    //RED [   ] 
-    &NOPaction,    //GRN [   ] 
-    &NOPaction,    //BLU [   ] 
-    &NOPaction,    //TSS [   ] 
-    &NOPaction,    //NOP [   ] 
-    &NOPaction,    //DIR [   ] 
-    &NOPaction,    //DEL [   ] 
-    &NOPaction,    //TX2 [   ] 
-    &NOPaction,    //TYP [   ] 
-    &NOPaction,    //NSC [   ] 
-    &NOPaction,    //NJN [   ] 
-    &NOPaction,    //NPW [   ] 
-    &NOPaction,    //NST [   ] 
-    &NOPaction,    //TPT [   ] 
-    &NOPaction,    //FMT [   ] 
-    &NOPaction,    //PKY [   ] 
-    &NOPaction,    //PFD [   ] 
-    &NOPaction,    //PTO [   ] 
-    &NOPaction,    //PIP [   ] 
-    &NOPaction,    //PON [   ] 
-    &NOPaction,    //POF [   ] 
-    &NOPaction,    //SSV [   ] 
-    &NOPaction,    //SGT [   ] 
-    &NOPaction,    //TFN [   ] 
-    &NOPaction,    //TFD [   ] 
-    &NOPaction,    //LTM [   ] 
-    &NOPaction,    //DVP [   ] 
-    &NOPaction,    //DVT [   ] 
-    &NOPaction,    //DTM [   ] 
-    &NOPaction,    //DID [   ] 
-    &NOPaction,    //LVB [   ] 
-    &LSVaction,    //LSV [   ] logger software version. 
-};
+actionptr actions[NKEYWORDS];
+   
+void setupKeywords(){
+    int i;
+    for (i=0; i<NKEYWORDS; i++) {
+        registerAction(i,&NOPaction);
+    }
+    registerAction(_ACK_,&ACKaction);
+    registerAction(_NAK_,&NAKaction);
+    registerAction(_LAM_,&LAMaction);
+    registerAction(_LFR_,&LFRaction);
+    registerAction(_LFM_,&MEMaction);
+    registerAction(_LSV_,&LSVaction);
     
+}
+
 struct tm theTime;
 
 void parseLine(cmdBuffer *buff) {
@@ -280,7 +239,7 @@ void parseLine(cmdBuffer *buff) {
 }
     
 int handleDeviceInput(cmdBuffer * cmd) {
-    int retval;
+    int retval=COMMAND_INVALID;
     parseLine(cmd);
     if ((cmd->kwIndex)>0) {
         retval=actions[cmd->kwIndex](DEVICE);
@@ -290,8 +249,9 @@ int handleDeviceInput(cmdBuffer * cmd) {
    return retval;
 }
 
+
 int handleConsoleInput(cmdBuffer * cmd) {
-    int retval;
+    int retval=COMMAND_INVALID;
     parseLine(cmd);
  
     if ((cmd->kwIndex) >=0 ) {
