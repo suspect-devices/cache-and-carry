@@ -66,6 +66,7 @@
 //extern "C" {
 #include "Monitor.h"
 #include "Utilities.h"
+#include "wifiHack.h"
 //}
 
 /* Global Variables */
@@ -151,7 +152,8 @@ void setup( void )
     setupKeywords();
     registerAction(_DIR_, &DIRaction);
     registerAction(_TYP_, &TYPaction);
-
+    setupRadioModule();
+    
     timer.pause();
     
     // Set up period
@@ -168,6 +170,7 @@ void setup( void )
     
     // Start the timer counting
     timer.resume();
+    setupRadioModule();
     
 }
 
