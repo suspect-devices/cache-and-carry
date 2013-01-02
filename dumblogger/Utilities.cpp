@@ -116,6 +116,8 @@ uint8_t TYPaction(uint8_t source){
                 buf[n]='\0';
                 toConsole(buf);
             }
+        }else{
+            toConsole("<EMPTY>");
         }
         toConsole("EOD:%s",filename);
         return COMMAND_OK;

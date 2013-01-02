@@ -63,5 +63,6 @@ extern SdFile file;
 
 int openNextFile(void);
 int sdCardInit(void);
-uint8_t DIRaction(uint8_t source);  
+uint8_t DIRaction(uint8_t source);
+uint8_t TYPaction(uint8_t source);
 

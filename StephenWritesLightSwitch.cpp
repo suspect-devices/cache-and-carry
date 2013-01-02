@@ -121,10 +121,8 @@ void hardwareSetup(void) {
     digitalWrite(BLU_LED, LOW);
     digitalWrite(GRN_LED, HIGH);
     SerialUSB.begin();  
-#ifdef LOGGING_SERIAL_DEVICE
-    Serial1.begin(9600);
-#endif
-    Serial2.begin(9600);
+    Serial1.begin(9600);  
+    Serial2.begin(9600); 
     // probably should initialize the monitor.
     sdCardStatus=sdCardInit();
     
@@ -132,8 +130,7 @@ void hardwareSetup(void) {
 /*-----------------------------------------------------------------------Setup()
  * 
  *----------------------------------------------------------------------------*/
-HardwareTimer timer(1);
-static void ledTask();
+
 void setup( void )
 {
     hardwareSetup();
@@ -148,14 +145,12 @@ void setup( void )
     // Setup the sensor pin as an analog input
     pinMode(sensor_pin,INPUT_ANALOG);
     
-    setupKeywords();
-    registerAction(_DIR_, &DIRaction);
-    registerAction(_TYP_, &TYPaction);
+    registerAction(_DIR_, DIRaction);
 
     timer.pause();
     
     // Set up period
-    timer.setPeriod(1000); // in microseconds
+    timer.setPeriod(1000000); // in microseconds
     
     // Set up an interrupt on channel 1
     timer.setMode(TIMER_CH1,TIMER_OUTPUT_COMPARE);
@@ -176,15 +171,13 @@ void setup( void )
  *----------------------------------------------------------------------------*/
 
 static void ledTask()
-{   static int count;
-    if (++count>=500) {
-        togglePin(BLU_LED);
-        count=0;
-    }
+{
+    togglePin(BLU_LED);
 }
 
 static void serialTasks() {
     char ch;
+    setupKeywords();
     while ((consoleComm.gotline==false) && (SerialUSB.available())) {
         if ((((ch=SerialUSB.read())!='\r') && (ch!='\n'))
             &&(consoleComm.len<MAX_COMMAND_LINE_LENGTH)
@@ -198,7 +191,6 @@ static void serialTasks() {
         }
         //SerialUSB.write(ch);
     }
-#ifdef LOGGING_SERIAL_DEVICE
     while ((deviceComm.gotline==false) && (Serial1.available())) {
         if ((((ch=Serial1.read())!='\r') && (ch!='\n'))
             &&(deviceComm.len<MAX_COMMAND_LINE_LENGTH)
@@ -212,7 +204,6 @@ static void serialTasks() {
         }
         //SerialUSB.write(ch);
     }
-#endif
 }
 
 // Force init to be called *first*, i.e. before static object allocation.
@@ -229,11 +220,10 @@ int main(void) {
         if (consoleComm.gotline) {
             handleConsoleInput(&consoleComm);
         }
-#ifdef LOGGING_SERIAL_DEVICE
         if (deviceComm.gotline) {
             handleDeviceInput(&deviceComm);
         }
-#endif
+    
             
    }
     
